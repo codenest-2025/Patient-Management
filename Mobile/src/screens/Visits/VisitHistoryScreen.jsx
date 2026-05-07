@@ -8,7 +8,7 @@ import { SocketContext } from "../../context/SocketContext";
 export default function VisitHistoryScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width > 600;
-  
+
   const socket = useContext(SocketContext);
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -18,7 +18,7 @@ export default function VisitHistoryScreen() {
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
   const [dateFilter, setDateFilter] = useState("all"); // all, today, week
-  
+
   // Pagination State
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -28,16 +28,25 @@ export default function VisitHistoryScreen() {
       if (pageNum === 1) setLoading(true);
       else setLoadingMore(true);
 
-      let startDate, endDate;
+      let startDateParam, endDateParam;
+
       if (filter === "today") {
-        startDate = new Date();
-        startDate.setHours(0, 0, 0, 0);
-        endDate = new Date();
-        endDate.setHours(23, 59, 59, 999);
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        startDateParam = start.toISOString();
+
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        endDateParam = end.toISOString();
       } else if (filter === "week") {
-        startDate = new Date();
-        startDate.setDate(startDate.getDate() - 7);
-        endDate = new Date();
+        const start = new Date();
+        start.setDate(start.getDate() - 7);
+        start.setHours(0, 0, 0, 0);
+        startDateParam = start.toISOString();
+
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        endDateParam = end.toISOString();
       }
 
       const { data } = await api.get("/visits", {
@@ -45,8 +54,8 @@ export default function VisitHistoryScreen() {
           page: pageNum,
           limit: isTablet ? 30 : 20,
           search: search,
-          startDate: startDate?.toISOString(),
-          endDate: endDate?.toISOString()
+          startDate: startDateParam,
+          endDate: endDateParam
         }
       });
 
@@ -55,11 +64,11 @@ export default function VisitHistoryScreen() {
       } else {
         setVisits(data.visits || []);
       }
-      
+
       setTotalPages(data.pages || 1);
       setPage(data.page || 1);
     } catch (e) {
-      console.error(e);
+      console.error("Fetch Visits Error:", e);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -102,7 +111,7 @@ export default function VisitHistoryScreen() {
       <List.Item
         title={item.patientId?.name || "Unknown Patient"}
         titleStyle={styles.patientName}
-        description={`Date: ${new Date(item.visitDate).toLocaleDateString()} | ${item.purpose || "General Visit"}`}
+        description={`${new Date(item.visitDate).toLocaleDateString()} | ${item.purpose || "General Visit"}`}
         left={(props) => (
           <Avatar.Icon
             {...props}
@@ -113,9 +122,14 @@ export default function VisitHistoryScreen() {
         )}
         right={() => (
           <View style={styles.rightContainer}>
-            <Text style={styles.amount}>₹{item.payableAmount}</Text>
+            <View style={styles.amountRow}>
+              <Text style={styles.paidAmount}>₹{item.paidAmount}</Text>
+              {item.payableAmount > 0 && (
+                <Text style={styles.totalAmount}> / ₹{item.payableAmount}</Text>
+              )}
+            </View>
             {item.dueAmount > 0 ? (
-              <Chip icon="alert-circle" compact selectedColor="white" style={styles.dueChip} textStyle={styles.chipText}>Due</Chip>
+              <Chip icon="alert-circle" compact selectedColor="white" style={styles.dueChip} textStyle={styles.chipText}>Due: ₹{item.dueAmount}</Chip>
             ) : (
               <Chip icon="check-circle" compact selectedColor="white" style={styles.paidChip} textStyle={styles.chipText}>Paid</Chip>
             )}
@@ -137,24 +151,24 @@ export default function VisitHistoryScreen() {
             iconColor="#004d40"
           />
           <View style={[styles.filterContainer, isTablet && { marginTop: 0 }]}>
-            <Chip 
-              selected={dateFilter === "all"} 
+            <Chip
+              selected={dateFilter === "all"}
               onPress={() => setDateFilter("all")}
               style={[styles.chip, dateFilter === "all" && styles.chipSelected]}
               textStyle={{ color: dateFilter === "all" ? "white" : "#004d40" }}
             >
               All
             </Chip>
-            <Chip 
-              selected={dateFilter === "today"} 
+            <Chip
+              selected={dateFilter === "today"}
               onPress={() => setDateFilter("today")}
               style={[styles.chip, dateFilter === "today" && styles.chipSelected]}
               textStyle={{ color: dateFilter === "today" ? "white" : "#004d40" }}
             >
               Today
             </Chip>
-            <Chip 
-              selected={dateFilter === "week"} 
+            <Chip
+              selected={dateFilter === "week"}
               onPress={() => setDateFilter("week")}
               style={[styles.chip, dateFilter === "week" && styles.chipSelected]}
               textStyle={{ color: dateFilter === "week" ? "white" : "#004d40" }}
@@ -247,10 +261,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginRight: 10,
   },
-  amount: {
+  amountRow: {
+    flexDirection: "row",
+    alignItems: "baseline",
+  },
+  paidAmount: {
     fontWeight: "bold",
-    fontSize: 16,
+    fontSize: 18,
     color: "#004d40",
+  },
+  totalAmount: {
+    fontSize: 12,
+    color: "#757575",
+    fontWeight: "500",
   },
   dueChip: {
     backgroundColor: "#f44336",

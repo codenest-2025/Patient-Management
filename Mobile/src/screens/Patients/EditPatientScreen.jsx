@@ -56,6 +56,17 @@ export default function EditPatientScreen({ route, navigation }) {
       return;
     }
 
+    const mobileRegex = /^[0-9]{10}$/;
+    if (!mobileRegex.test(mobile1)) {
+      setError("Primary Mobile Number must be exactly 10 digits");
+      return;
+    }
+
+    if (mobile2 && !mobileRegex.test(mobile2)) {
+      setError("Alternate Mobile Number must be exactly 10 digits");
+      return;
+    }
+
     setSaving(true);
     setError("");
     try {
@@ -98,9 +109,10 @@ export default function EditPatientScreen({ route, navigation }) {
         <TextInput
           label="Mobile Number *"
           value={mobile1}
-          onChangeText={setMobile1}
+          onChangeText={(text) => setMobile1(text.replace(/[^0-9]/g, ""))}
           mode="outlined"
-          keyboardType="phone-pad"
+          keyboardType="number-pad"
+          maxLength={10}
           style={styles.input}
           activeOutlineColor="#004d40"
         />
@@ -108,9 +120,10 @@ export default function EditPatientScreen({ route, navigation }) {
         <TextInput
           label="Alternate Mobile (Optional)"
           value={mobile2}
-          onChangeText={setMobile2}
+          onChangeText={(text) => setMobile2(text.replace(/[^0-9]/g, ""))}
           mode="outlined"
-          keyboardType="phone-pad"
+          keyboardType="number-pad"
+          maxLength={10}
           style={styles.input}
           activeOutlineColor="#004d40"
         />
