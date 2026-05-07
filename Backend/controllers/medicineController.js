@@ -30,11 +30,14 @@ const getMedicines = async (req, res) => {
   }
 
   try {
-    const total = await Medicine.countDocuments(query);
-    const medicines = await Medicine.find(query)
-      .sort({ name: 1 })
-      .skip(parseInt(skip))
-      .limit(parseInt(limit));
+    const [total, medicines] = await Promise.all([
+      Medicine.countDocuments(query),
+      Medicine.find(query)
+        .sort({ name: 1 })
+        .skip(parseInt(skip))
+        .limit(parseInt(limit))
+        .lean()
+    ]);
 
     res.json({
       medicines,

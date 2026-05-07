@@ -35,11 +35,14 @@ const getPatients = async (req, res) => {
   }
 
   try {
-    const total = await Patient.countDocuments(query);
-    const patients = await Patient.find(query)
-      .sort({ updatedAt: -1 })
-      .skip(parseInt(skip))
-      .limit(parseInt(limit));
+    const [total, patients] = await Promise.all([
+      Patient.countDocuments(query),
+      Patient.find(query)
+        .sort({ updatedAt: -1 })
+        .skip(parseInt(skip))
+        .limit(parseInt(limit))
+        .lean()
+    ]);
 
     res.json({
       patients,

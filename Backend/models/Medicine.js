@@ -10,11 +10,14 @@ const medicineSchema = new mongoose.Schema(
     stock: {
       type: Number,
       default: 0,
+      index: true,
     },
   },
   {
     timestamps: true,
   }
 );
+
+medicineSchema.index({ name: 1 });
 
 module.exports = mongoose.model("Medicine", medicineSchema);

@@ -23,11 +23,15 @@ const patientSchema = new mongoose.Schema(
     totalDue: {
       type: Number,
       default: 0,
+      index: true,
     },
   },
   {
     timestamps: true,
   }
 );
+
+patientSchema.index({ name: "text" }); // Enable text search for name if needed, or just standard index
+patientSchema.index({ name: 1 });
 
 module.exports = mongoose.model("Patient", patientSchema);

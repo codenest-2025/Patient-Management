@@ -29,11 +29,14 @@ const visitSchema = new mongoose.Schema(
     visitDate: {
       type: Date,
       default: Date.now,
+      index: true,
     },
   },
   {
     timestamps: true,
   }
 );
+
+visitSchema.index({ patientId: 1, visitDate: -1 });
 
 module.exports = mongoose.model("Visit", visitSchema);

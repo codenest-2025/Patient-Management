@@ -6,17 +6,18 @@ const Visit = require("../models/Visit");
 // @route   GET /api/dashboard/summary
 const getSummary = async (req, res) => {
   try {
-    const totalPatients = await Patient.countDocuments();
-    const totalMedicines = await Medicine.countDocuments();
-    const totalVisits = await Visit.countDocuments();
+    const [totalPatients, totalMedicines, totalVisits, dueAggregation, lowStockMedicines] = await Promise.all([
+      Patient.countDocuments(),
+      Medicine.countDocuments(),
+      Visit.countDocuments(),
+      Patient.aggregate([
+        { $match: { totalDue: { $gt: 0 } } },
+        { $group: { _id: null, total: { $sum: "$totalDue" } } }
+      ]),
+      Medicine.find({ stock: { $lt: 10 } }).limit(20).lean()
+    ]);
 
-    const patientsWithDue = await Patient.find({ totalDue: { $gt: 0 } });
-    const totalDueAmount = patientsWithDue.reduce(
-      (acc, patient) => acc + patient.totalDue,
-      0
-    );
-
-    const lowStockMedicines = await Medicine.find({ stock: { $lt: 10 } });
+    const totalDueAmount = dueAggregation.length > 0 ? dueAggregation[0].total : 0;
 
     res.json({
       totalPatients,

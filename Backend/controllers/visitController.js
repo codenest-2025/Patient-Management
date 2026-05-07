@@ -63,7 +63,7 @@ const getVisits = async (req, res) => {
       // We search by purpose OR by patient name (requires lookup)
       const matchingPatients = await Patient.find({
         name: { $regex: search, $options: "i" }
-      }).select("_id");
+      }).select("_id").lean();
       const patientIds = matchingPatients.map(p => p._id);
       
       query.$or = [
@@ -82,13 +82,16 @@ const getVisits = async (req, res) => {
       }
     }
 
-    const total = await Visit.countDocuments(query);
-    const visits = await Visit.find(query)
-      .sort({ visitDate: -1 })
-      .skip(parseInt(skip))
-      .limit(parseInt(limit))
-      .populate("patientId")
-      .populate("medicines.medicineId");
+    const [total, visits] = await Promise.all([
+      Visit.countDocuments(query),
+      Visit.find(query)
+        .sort({ visitDate: -1 })
+        .skip(parseInt(skip))
+        .limit(parseInt(limit))
+        .populate("patientId")
+        .populate("medicines.medicineId")
+        .lean()
+    ]);
 
     res.json({
       visits,
