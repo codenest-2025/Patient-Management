@@ -98,7 +98,8 @@ const getUsers = async (req, res) => {
       pages: Math.ceil(total / limit),
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(`Get users error: ${error.message}`);
+    res.status(500).json({ message: "Failed to retrieve users. Please try again." });
   }
 };
 
@@ -106,6 +107,9 @@ const getUsers = async (req, res) => {
 // @route   PUT /api/auth/users/:id
 const updateUser = async (req, res) => {
   try {
+    console.log("Updating User ID:", req.params.id);
+    console.log("Update Body:", req.body);
+    
     const user = await User.findById(req.params.id);
     if (user) {
       user.username = req.body.username || user.username;
@@ -127,7 +131,11 @@ const updateUser = async (req, res) => {
       res.status(404).json({ message: "User not found" });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Detailed Update User Error:", error);
+    res.status(500).json({ 
+      message: error.message || "Failed to update user",
+      details: error.errors ? Object.keys(error.errors).map(key => error.errors[key].message) : []
+    });
   }
 };
 

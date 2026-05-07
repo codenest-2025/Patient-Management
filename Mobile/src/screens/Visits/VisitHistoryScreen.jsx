@@ -115,9 +115,9 @@ export default function VisitHistoryScreen() {
           <View style={styles.rightContainer}>
             <Text style={styles.amount}>₹{item.payableAmount}</Text>
             {item.dueAmount > 0 ? (
-              <Chip style={styles.dueChip} textStyle={styles.chipText}>Due</Chip>
+              <Chip icon="alert-circle" compact selectedColor="white" style={styles.dueChip} textStyle={styles.chipText}>Due</Chip>
             ) : (
-              <Chip style={styles.paidChip} textStyle={styles.chipText}>Paid</Chip>
+              <Chip icon="check-circle" compact selectedColor="white" style={styles.paidChip} textStyle={styles.chipText}>Paid</Chip>
             )}
           </View>
         )}
@@ -254,16 +254,16 @@ const styles = StyleSheet.create({
   },
   dueChip: {
     backgroundColor: "#f44336",
-    height: 22,
     marginTop: 4,
+    borderRadius: 6,
   },
   paidChip: {
     backgroundColor: "#4caf50",
-    height: 22,
     marginTop: 4,
+    borderRadius: 6,
   },
   chipText: {
-    fontSize: 9,
+    fontSize: 10,
     color: "white",
     fontWeight: "bold",
   },

@@ -82,10 +82,12 @@ export default function ManageUsersScreen() {
 
   const handleToggleStatus = async (user) => {
     try {
-      await api.put(`/auth/users/${user._id}`, { isActive: !user.isActive });
+      const userId = typeof user._id === "object" ? user._id.$oid || user._id.toString() : user._id;
+      await api.put(`/auth/users/${userId}`, { isActive: !user.isActive });
       fetchUsers(1, false, searchQuery, roleFilter);
     } catch (e) {
-      Alert.alert("Error", "Failed to update status");
+      const msg = e.response?.data?.message || "Failed to update status";
+      Alert.alert("Error", msg);
     }
   };
 
@@ -100,10 +102,12 @@ export default function ManageUsersScreen() {
           style: "destructive", 
           onPress: async () => {
             try {
-              await api.delete(`/auth/users/${user._id}`);
+              const userId = typeof user._id === "object" ? user._id.$oid || user._id.toString() : user._id;
+              await api.delete(`/auth/users/${userId}`);
               fetchUsers(1, false, searchQuery, roleFilter);
             } catch (e) {
-              Alert.alert("Error", "Failed to delete user");
+              const msg = e.response?.data?.message || "Failed to delete user";
+              Alert.alert("Error", msg);
             }
           }
         }
@@ -125,11 +129,13 @@ export default function ManageUsersScreen() {
       const payload = { username: newUsername };
       if (newPassword) payload.password = newPassword;
       
-      await api.put(`/auth/users/${selectedUser._id}`, payload);
+      const userId = typeof selectedUser._id === "object" ? selectedUser._id.$oid || selectedUser._id.toString() : selectedUser._id;
+      await api.put(`/auth/users/${userId}`, payload);
       setEditVisible(false);
       fetchUsers(1, false, searchQuery, roleFilter);
     } catch (e) {
-      Alert.alert("Error", "Failed to update user");
+      const msg = e.response?.data?.message || "Failed to update user";
+      Alert.alert("Error", msg);
     } finally {
       setUpdating(false);
     }

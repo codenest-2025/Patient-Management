@@ -58,6 +58,19 @@ const getVisits = async (req, res) => {
     query.patientId = patientId;
   }
 
+  if (search) {
+    // We search by purpose OR by patient name (requires lookup)
+    const matchingPatients = await Patient.find({
+      name: { $regex: search, $options: "i" }
+    }).select("_id");
+    const patientIds = matchingPatients.map(p => p._id);
+    
+    query.$or = [
+      { purpose: { $regex: search, $options: "i" } },
+      { patientId: { $in: patientIds } }
+    ];
+  }
+
   if (startDate || endDate) {
     query.visitDate = {};
     if (startDate) {
