@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useContext } from "react";
 import { View, StyleSheet, ScrollView, RefreshControl, Dimensions } from "react-native";
-import { Text, Card, List, Avatar, Button, IconButton, Surface } from "react-native-paper";
+import { Text, Card, List, Avatar, Button, IconButton, Surface, Portal, Modal, TextInput, HelperText } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import { AuthContext } from "../../context/AuthContext";
 import { SocketContext } from "../../context/SocketContext";
@@ -32,6 +32,13 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const { logout, userInfo } = useContext(AuthContext);
   const socket = useContext(SocketContext);
+
+  // Add Manager State
+  const [managerModalVisible, setManagerModalVisible] = useState(false);
+  const [managerUsername, setManagerUsername] = useState("");
+  const [managerPassword, setManagerPassword] = useState("");
+  const [managerLoading, setManagerLoading] = useState(false);
+  const [managerError, setManagerError] = useState("");
 
   const fetchSummary = async () => {
     try {
@@ -68,6 +75,30 @@ export default function DashboardScreen() {
     }
   }, [socket]);
 
+  const handleAddManager = async () => {
+    if (!managerUsername || !managerPassword) {
+      setManagerError("Username and Password are required");
+      return;
+    }
+    setManagerLoading(true);
+    setManagerError("");
+    try {
+      await api.post("/auth/register", {
+        username: managerUsername,
+        password: managerPassword,
+        role: "manager",
+      });
+      setManagerModalVisible(false);
+      setManagerUsername("");
+      setManagerPassword("");
+      alert("Manager added successfully!");
+    } catch (e) {
+      setManagerError(e.response?.data?.message || "Failed to add manager");
+    } finally {
+      setManagerLoading(false);
+    }
+  };
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchSummary();
@@ -99,12 +130,23 @@ export default function DashboardScreen() {
               Welcome back, {userInfo?.username || "Admin"}
             </Text>
           </View>
-          <IconButton 
-            icon="logout" 
-            onPress={logout} 
-            iconColor="white" 
-            containerColor="rgba(255,255,255,0.2)"
-          />
+          <View style={{ flexDirection: "row" }}>
+            {userInfo?.role === "admin" && (
+              <IconButton 
+                icon="account-plus" 
+                onPress={() => setManagerModalVisible(true)} 
+                iconColor="white" 
+                containerColor="rgba(255,255,255,0.2)"
+                style={{ marginRight: 8 }}
+              />
+            )}
+            <IconButton 
+              icon="logout" 
+              onPress={logout} 
+              iconColor="white" 
+              containerColor="rgba(255,255,255,0.2)"
+            />
+          </View>
         </View>
       </LinearGradient>
 
@@ -181,6 +223,41 @@ export default function DashboardScreen() {
       )}
       
       <View style={{ height: 30 }} />
+
+      <Portal>
+        <Modal
+          visible={managerModalVisible}
+          onDismiss={() => setManagerModalVisible(false)}
+          contentContainerStyle={styles.modal}
+        >
+          <Text variant="titleLarge" style={styles.modalTitle}>Add New Manager</Text>
+          <TextInput
+            label="Username"
+            value={managerUsername}
+            onChangeText={setManagerUsername}
+            mode="outlined"
+            style={styles.modalInput}
+            autoCapitalize="none"
+          />
+          <TextInput
+            label="Password"
+            value={managerPassword}
+            onChangeText={setManagerPassword}
+            mode="outlined"
+            style={styles.modalInput}
+            secureTextEntry
+          />
+          {managerError ? <HelperText type="error">{managerError}</HelperText> : null}
+          <Button
+            mode="contained"
+            onPress={handleAddManager}
+            loading={managerLoading}
+            style={styles.modalButton}
+          >
+            Create Manager
+          </Button>
+        </Modal>
+      </Portal>
     </ScrollView>
   );
 }
@@ -305,5 +382,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#f8f9fa",
+  },
+  modal: {
+    backgroundColor: "white",
+    padding: 20,
+    margin: 20,
+    borderRadius: 16,
+  },
+  modalTitle: {
+    marginBottom: 20,
+    fontWeight: "bold",
+    color: "#004d40",
+    textAlign: "center",
+  },
+  modalInput: {
+    marginBottom: 15,
+  },
+  modalButton: {
+    marginTop: 10,
+    backgroundColor: "#004d40",
+    paddingVertical: 6,
   },
 });
