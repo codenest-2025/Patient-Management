@@ -49,39 +49,39 @@ const addVisit = async (req, res) => {
 // @desc    Get all visits
 // @route   GET /api/visits
 const getVisits = async (req, res) => {
-  const { patientId, startDate, endDate, page = 1, limit = 20 } = req.query;
+  const { search, patientId, startDate, endDate, page = 1, limit = 20 } = req.query;
   const skip = (page - 1) * limit;
 
-  let query = {};
-
-  if (patientId) {
-    query.patientId = patientId;
-  }
-
-  if (search) {
-    // We search by purpose OR by patient name (requires lookup)
-    const matchingPatients = await Patient.find({
-      name: { $regex: search, $options: "i" }
-    }).select("_id");
-    const patientIds = matchingPatients.map(p => p._id);
-    
-    query.$or = [
-      { purpose: { $regex: search, $options: "i" } },
-      { patientId: { $in: patientIds } }
-    ];
-  }
-
-  if (startDate || endDate) {
-    query.visitDate = {};
-    if (startDate) {
-      query.visitDate.$gte = new Date(startDate);
-    }
-    if (endDate) {
-      query.visitDate.$lte = new Date(endDate);
-    }
-  }
-
   try {
+    let query = {};
+
+    if (patientId) {
+      query.patientId = patientId;
+    }
+
+    if (search) {
+      // We search by purpose OR by patient name (requires lookup)
+      const matchingPatients = await Patient.find({
+        name: { $regex: search, $options: "i" }
+      }).select("_id");
+      const patientIds = matchingPatients.map(p => p._id);
+      
+      query.$or = [
+        { purpose: { $regex: search, $options: "i" } },
+        { patientId: { $in: patientIds } }
+      ];
+    }
+
+    if (startDate || endDate) {
+      query.visitDate = {};
+      if (startDate) {
+        query.visitDate.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        query.visitDate.$lte = new Date(endDate);
+      }
+    }
+
     const total = await Visit.countDocuments(query);
     const visits = await Visit.find(query)
       .sort({ visitDate: -1 })
