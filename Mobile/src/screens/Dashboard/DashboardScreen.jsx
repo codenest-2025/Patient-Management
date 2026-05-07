@@ -16,11 +16,11 @@ const SummaryCard = ({ title, value, icon, color }) => (
         <Text variant="labelMedium" style={styles.cardTitle}>{title}</Text>
         <Text variant="titleLarge" style={[styles.cardValue, { color }]}>{value}</Text>
       </View>
-      <Avatar.Icon 
-        size={44} 
-        icon={icon} 
-        backgroundColor={color + "15"} 
-        color={color} 
+      <Avatar.Icon
+        size={44}
+        icon={icon}
+        backgroundColor={color + "15"}
+        color={color}
       />
     </View>
   </Surface>
@@ -33,12 +33,12 @@ export default function DashboardScreen({ navigation }) {
   const { logout, userInfo } = useContext(AuthContext);
   const socket = useContext(SocketContext);
 
-  // Add Manager State
-  const [managerModalVisible, setManagerModalVisible] = useState(false);
-  const [managerUsername, setManagerUsername] = useState("");
-  const [managerPassword, setManagerPassword] = useState("");
-  const [managerLoading, setManagerLoading] = useState(false);
-  const [managerError, setManagerError] = useState("");
+  // Add Staff State
+  const [staffModalVisible, setStaffModalVisible] = useState(false);
+  const [staffUsername, setStaffUsername] = useState("");
+  const [staffPassword, setStaffPassword] = useState("");
+  const [staffLoading, setStaffLoading] = useState(false);
+  const [staffError, setStaffError] = useState("");
 
   // Logout Confirmation State
   const [logoutVisible, setLogoutVisible] = useState(false);
@@ -78,27 +78,27 @@ export default function DashboardScreen({ navigation }) {
     }
   }, [socket]);
 
-  const handleAddManager = async () => {
-    if (!managerUsername || !managerPassword) {
-      setManagerError("Username and Password are required");
+  const handleAddStaff = async () => {
+    if (!staffUsername || !staffPassword) {
+      setStaffError("Username and Password are required");
       return;
     }
-    setManagerLoading(true);
-    setManagerError("");
+    setStaffLoading(true);
+    setStaffError("");
     try {
       await api.post("/auth/register", {
-        username: managerUsername,
-        password: managerPassword,
-        role: "manager",
+        username: staffUsername,
+        password: staffPassword,
+        role: "staff",
       });
-      setManagerModalVisible(false);
-      setManagerUsername("");
-      setManagerPassword("");
-      alert("Manager added successfully!");
+      setStaffModalVisible(false);
+      setStaffUsername("");
+      setStaffPassword("");
+      alert("Staff added successfully!");
     } catch (e) {
-      setManagerError(e.response?.data?.message || "Failed to add manager");
+      setStaffError(e.response?.data?.message || "Failed to add staff");
     } finally {
-      setManagerLoading(false);
+      setStaffLoading(false);
     }
   };
 
@@ -128,25 +128,25 @@ export default function DashboardScreen({ navigation }) {
       >
         <View style={styles.headerContent}>
           <View>
-            <Text variant="headlineSmall" style={styles.headerTitle}>Heka Dashboard</Text>
+            <Text variant="headlineSmall" style={styles.headerTitle}>Dashboard</Text>
             <Text variant="bodyMedium" style={styles.headerSubtitle}>
               Welcome back, {userInfo?.username || "Admin"}
             </Text>
           </View>
           <View style={{ flexDirection: "row" }}>
             {userInfo?.role === "admin" && (
-              <IconButton 
-                icon="account-plus" 
-                onPress={() => setManagerModalVisible(true)} 
-                iconColor="white" 
+              <IconButton
+                icon="account-plus"
+                onPress={() => setStaffModalVisible(true)}
+                iconColor="white"
                 containerColor="rgba(255,255,255,0.2)"
                 style={{ marginRight: 8 }}
               />
             )}
-            <IconButton 
-              icon="logout" 
-              onPress={() => setLogoutVisible(true)} 
-              iconColor="white" 
+            <IconButton
+              icon="logout"
+              onPress={() => setLogoutVisible(true)}
+              iconColor="white"
               containerColor="rgba(255,255,255,0.2)"
             />
           </View>
@@ -212,7 +212,7 @@ export default function DashboardScreen({ navigation }) {
               descriptionStyle={styles.listDescription}
               left={(props) => (
                 <View style={styles.listIconContainer}>
-                   <Avatar.Icon {...props} icon="alert-decagram" size={40} color="#ff9800" backgroundColor="#fff3e0" />
+                  <Avatar.Icon {...props} icon="alert-decagram" size={40} color="#ff9800" backgroundColor="#fff3e0" />
                 </View>
               )}
             />
@@ -224,7 +224,7 @@ export default function DashboardScreen({ navigation }) {
           <Text variant="bodyLarge" style={styles.emptyText}>All stocks are sufficient</Text>
         </Surface>
       )}
-      
+
       {userInfo?.role === "admin" && (
         <View style={styles.adminPanel}>
           <View style={styles.sectionHeader}>
@@ -232,7 +232,7 @@ export default function DashboardScreen({ navigation }) {
           </View>
           <Surface style={styles.adminCard} elevation={1}>
             <List.Item
-              title="User Management"
+              title="Staff Management"
               description="Edit, Delete, or Deactivate Staff Accounts"
               left={(props) => <Avatar.Icon {...props} icon="account-cog" color="#004d40" backgroundColor="#e0f2f1" />}
               right={(props) => <List.Icon {...props} icon="chevron-right" />}
@@ -246,22 +246,22 @@ export default function DashboardScreen({ navigation }) {
 
       <Portal>
         <Modal
-          visible={managerModalVisible}
-          onDismiss={() => setManagerModalVisible(false)}
+          visible={staffModalVisible}
+          onDismiss={() => setStaffModalVisible(false)}
           contentContainerStyle={styles.modalContainer}
         >
           <View style={styles.modalHeader}>
             <Avatar.Icon icon="account-plus" size={48} color="white" backgroundColor="#004d40" />
             <Text variant="headlineSmall" style={styles.modalHeaderTitle}>Add New Staff</Text>
           </View>
-          
+
           <View style={styles.modalBody}>
             <Text variant="bodyMedium" style={styles.modalSubtitle}>Create a new Receptionist or Staff account.</Text>
-            
+
             <TextInput
               label="Username"
-              value={managerUsername}
-              onChangeText={setManagerUsername}
+              value={staffUsername}
+              onChangeText={setStaffUsername}
               mode="outlined"
               style={styles.modalInput}
               autoCapitalize="none"
@@ -271,8 +271,8 @@ export default function DashboardScreen({ navigation }) {
             />
             <TextInput
               label="Password"
-              value={managerPassword}
-              onChangeText={setManagerPassword}
+              value={staffPassword}
+              onChangeText={setStaffPassword}
               mode="outlined"
               style={styles.modalInput}
               secureTextEntry
@@ -280,13 +280,13 @@ export default function DashboardScreen({ navigation }) {
               activeOutlineColor="#004d40"
               left={<TextInput.Icon icon="lock" color="#004d40" />}
             />
-            {managerError ? <HelperText type="error">{managerError}</HelperText> : null}
+            {staffError ? <HelperText type="error">{staffError}</HelperText> : null}
           </View>
 
           <View style={styles.modalFooter}>
             <Button
               mode="text"
-              onPress={() => setManagerModalVisible(false)}
+              onPress={() => setStaffModalVisible(false)}
               style={styles.modalFooterButton}
               textColor="#757575"
             >
@@ -294,8 +294,8 @@ export default function DashboardScreen({ navigation }) {
             </Button>
             <Button
               mode="contained"
-              onPress={handleAddManager}
-              loading={managerLoading}
+              onPress={handleAddStaff}
+              loading={staffLoading}
               style={[styles.modalFooterButton, { backgroundColor: "#004d40" }]}
               labelStyle={{ fontWeight: "bold" }}
             >
@@ -312,7 +312,7 @@ export default function DashboardScreen({ navigation }) {
           <View style={[styles.modalHeader, { backgroundColor: "#fff5f5", borderBottomWidth: 0 }]}>
             <Avatar.Icon icon="logout" size={64} color="#f44336" backgroundColor="#ffebee" />
           </View>
-          
+
           <View style={[styles.modalBody, { alignItems: "center", paddingBottom: 10 }]}>
             <Text variant="headlineSmall" style={[styles.modalHeaderTitle, { color: "#333", marginTop: 0 }]}>Confirm Logout</Text>
             <Text variant="bodyMedium" style={{ textAlign: "center", color: "#666", marginTop: 8 }}>

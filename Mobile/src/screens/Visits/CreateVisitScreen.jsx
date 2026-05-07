@@ -33,7 +33,7 @@ export default function CreateVisitScreen({ route, navigation }) {
           api.get("/medicines")
         ]);
         setPatient(pRes.data);
-        setAllMedicines(mRes.data);
+        setAllMedicines(mRes.data.medicines || []);
       } catch (e) {
         console.error(e);
       }

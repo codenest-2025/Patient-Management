@@ -31,14 +31,13 @@ export default function EditVisitScreen({ route, navigation }) {
         const [pRes, mRes, vRes] = await Promise.all([
           api.get(`/patients/${patientId}`),
           api.get("/medicines"),
-          api.get("/visits") // We fetch all then filter, or we can add a getVisitById endpoint. 
-          // For now, I'll assume I can find it in the list or add the endpoint.
+          api.get(`/visits/${visitId}`)
         ]);
         
         setPatient(pRes.data);
-        setAllMedicines(mRes.data);
+        setAllMedicines(mRes.data.medicines || []);
         
-        const currentVisit = vRes.data.find(v => v._id === visitId);
+        const currentVisit = vRes.data;
         if (currentVisit) {
           setPayableAmount(currentVisit.payableAmount.toString());
           setPaidAmount(currentVisit.paidAmount.toString());
@@ -47,7 +46,7 @@ export default function EditVisitScreen({ route, navigation }) {
             medicineId: m.medicineId._id || m.medicineId,
             name: m.medicineId.name || "Unknown",
             quantity: m.quantity,
-            stock: 999 // We don't strictly need stock check for editing existing quantities
+            stock: 999 
           })));
         }
       } catch (e) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext } from "react";
-import { View, StyleSheet, FlatList, RefreshControl } from "react-native";
+import { View, StyleSheet, FlatList, RefreshControl, ActivityIndicator } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
 import { Text, Searchbar, List, FAB, Avatar, Divider, Chip, Surface } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
@@ -9,52 +9,79 @@ import { SocketContext } from "../../context/SocketContext";
 export default function PatientListScreen({ navigation }) {
   const socket = useContext(SocketContext);
   const [patients, setPatients] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  const fetchPatients = async (query = "") => {
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [dueOnly, setDueOnly] = useState(false);
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const fetchPatients = async (pageNum = 1, shouldAppend = false, search = searchQuery, hasDue = dueOnly) => {
     try {
-      const { data } = await api.get(`/patients?search=${query}`);
-      // Backend now returns { patients, total, page, pages }
-      setPatients(data.patients || []);
+      if (pageNum === 1) setLoading(true);
+      else setLoadingMore(true);
+
+      const { data } = await api.get(`/patients`, {
+        params: {
+          page: pageNum,
+          limit: 15,
+          search: search,
+          hasDue: hasDue
+        }
+      });
+
+      if (shouldAppend) {
+        setPatients(prev => [...prev, ...(data.patients || [])]);
+      } else {
+        setPatients(data.patients || []);
+      }
+
+      setTotalPages(data.pages || 1);
+      setPage(data.page || 1);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       setRefreshing(false);
     }
   };
 
   useFocusEffect(
     useCallback(() => {
-      fetchPatients(searchQuery);
-    }, [searchQuery])
+      fetchPatients(1, false, searchQuery, dueOnly);
+    }, [dueOnly])
   );
 
   useEffect(() => {
     if (socket) {
       const handler = () => {
-        console.log("Real-time update received on Patient List");
-        fetchPatients(searchQuery);
+        fetchPatients(1, false, searchQuery, dueOnly);
       };
-
       socket.on("patient_changed", handler);
-
-      return () => {
-        socket.off("patient_changed", handler);
-      };
+      return () => socket.off("patient_changed", handler);
     }
-  }, [socket, searchQuery]);
+  }, [socket, searchQuery, dueOnly]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchPatients(searchQuery);
-  }, [searchQuery]);
+    fetchPatients(1, false, searchQuery, dueOnly);
+  }, [searchQuery, dueOnly]);
 
-  const onChangeSearch = (query) => {
+  const handleLoadMore = () => {
+    if (!loadingMore && page < totalPages) {
+      fetchPatients(page + 1, true, searchQuery, dueOnly);
+    }
+  };
+
+  const handleSearch = (query) => {
     setSearchQuery(query);
-    fetchPatients(query);
+    fetchPatients(1, false, query, dueOnly);
   };
 
   const renderPatientItem = ({ item }) => (
@@ -77,8 +104,8 @@ export default function PatientListScreen({ navigation }) {
         right={(props) => (
           <View style={styles.rightContainer}>
             {item.totalDue > 0 ? (
-              <Chip 
-                textStyle={styles.dueText} 
+              <Chip
+                textStyle={styles.dueText}
                 style={styles.dueChip}
                 compact
               >
@@ -102,13 +129,25 @@ export default function PatientListScreen({ navigation }) {
       >
         <Searchbar
           placeholder="Search patient..."
-          onChangeText={onChangeSearch}
+          onChangeText={handleSearch}
           value={searchQuery}
           style={styles.searchBar}
           iconColor="#004d40"
           placeholderTextColor="#999"
           elevation={2}
         />
+        <View style={styles.filterContainer}>
+          <Chip
+            selected={dueOnly}
+            onPress={() => setDueOnly(!dueOnly)}
+            style={[styles.chip, dueOnly && styles.chipSelected]}
+            textStyle={{ color: dueOnly ? "white" : "white" }}
+            selectedColor="white"
+            icon={dueOnly ? "check" : "account-cash"}
+          >
+            Pending Due
+          </Chip>
+        </View>
       </LinearGradient>
 
       <FlatList
@@ -117,6 +156,9 @@ export default function PatientListScreen({ navigation }) {
         renderItem={renderPatientItem}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#004d40"]} />}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={() => loadingMore ? <ActivityIndicator style={{ margin: 10 }} color="#004d40" /> : null}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Avatar.Icon icon="account-search-outline" size={80} color="#ccc" backgroundColor="transparent" />
@@ -160,6 +202,17 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     height: 54,
     elevation: 0,
+  },
+  filterContainer: {
+    flexDirection: "row",
+    marginTop: 15,
+  },
+  chip: {
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderColor: "rgba(255,255,255,0.3)",
+  },
+  chipSelected: {
+    backgroundColor: "#ff9800",
   },
   listContent: {
     padding: 20,

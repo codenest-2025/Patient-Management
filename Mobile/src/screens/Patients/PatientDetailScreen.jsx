@@ -26,8 +26,8 @@ export default function PatientDetailScreen({ route, navigation }) {
       const pRes = await api.get(`/patients/${patientId}`);
       setPatient(pRes.data);
       
-      const vRes = await api.get("/visits");
-      const patientVisits = vRes.data.filter(v => v.patientId?._id === patientId || v.patientId === patientId);
+      const vRes = await api.get("/visits", { params: { patientId } }); // Optimize by passing patientId to backend
+      const patientVisits = vRes.data.visits || [];
       setVisits(patientVisits.sort((a, b) => new Date(b.visitDate) - new Date(a.visitDate)));
     } catch (e) {
       console.error(e);

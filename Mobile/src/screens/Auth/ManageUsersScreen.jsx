@@ -1,12 +1,25 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { View, StyleSheet, FlatList, RefreshControl, Alert } from "react-native";
-import { Text, List, Avatar, IconButton, Surface, Switch, Portal, Modal, TextInput, Button, Divider, Chip } from "react-native-paper";
+import { View, StyleSheet, FlatList, RefreshControl, Alert, useWindowDimensions, ActivityIndicator } from "react-native";
+import { Text, List, Avatar, IconButton, Surface, Switch, Portal, Modal, TextInput, Button, Divider, Chip, Searchbar } from "react-native-paper";
+import { LinearGradient } from "expo-linear-gradient";
 import api from "../../services/api";
 
 export default function ManageUsersScreen() {
+  const { width } = useWindowDimensions();
+  const isTablet = width > 600;
+  
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState(""); // empty means all
+  
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   // Edit Modal State
   const [editVisible, setEditVisible] = useState(false);
@@ -15,33 +28,62 @@ export default function ManageUsersScreen() {
   const [newPassword, setNewPassword] = useState("");
   const [updating, setUpdating] = useState(false);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (pageNum = 1, shouldAppend = false, search = searchQuery, role = roleFilter) => {
     try {
-      const { data } = await api.get("/auth/users");
-      // Backend now returns { users, total, page, pages }
-      setUsers(data.users || []);
+      if (pageNum === 1) setLoading(true);
+      else setLoadingMore(true);
+
+      const { data } = await api.get("/auth/users", {
+        params: {
+          page: pageNum,
+          limit: isTablet ? 20 : 10,
+          search: search,
+          role: role
+        }
+      });
+
+      if (shouldAppend) {
+        setUsers(prev => [...prev, ...(data.users || [])]);
+      } else {
+        setUsers(data.users || []);
+      }
+      
+      setTotalPages(data.pages || 1);
+      setPage(data.page || 1);
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Failed to fetch users");
     } finally {
       setLoading(false);
+      setLoadingMore(false);
       setRefreshing(false);
     }
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers(1, false, searchQuery, roleFilter);
+  }, [roleFilter]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchUsers();
-  }, []);
+    fetchUsers(1, false, searchQuery, roleFilter);
+  }, [searchQuery, roleFilter]);
+
+  const handleLoadMore = () => {
+    if (!loadingMore && page < totalPages) {
+      fetchUsers(page + 1, true, searchQuery, roleFilter);
+    }
+  };
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    fetchUsers(1, false, query, roleFilter);
+  };
 
   const handleToggleStatus = async (user) => {
     try {
       await api.put(`/auth/users/${user._id}`, { isActive: !user.isActive });
-      fetchUsers();
+      fetchUsers(1, false, searchQuery, roleFilter);
     } catch (e) {
       Alert.alert("Error", "Failed to update status");
     }
@@ -59,7 +101,7 @@ export default function ManageUsersScreen() {
           onPress: async () => {
             try {
               await api.delete(`/auth/users/${user._id}`);
-              fetchUsers();
+              fetchUsers(1, false, searchQuery, roleFilter);
             } catch (e) {
               Alert.alert("Error", "Failed to delete user");
             }
@@ -85,7 +127,7 @@ export default function ManageUsersScreen() {
       
       await api.put(`/auth/users/${selectedUser._id}`, payload);
       setEditVisible(false);
-      fetchUsers();
+      fetchUsers(1, false, searchQuery, roleFilter);
     } catch (e) {
       Alert.alert("Error", "Failed to update user");
     } finally {
@@ -94,14 +136,15 @@ export default function ManageUsersScreen() {
   };
 
   const renderUserItem = ({ item }) => (
-    <Surface style={styles.card} elevation={1}>
+    <Surface style={[styles.card, isTablet && styles.tabletCard]} elevation={1}>
       <List.Item
         title={item.username}
+        titleStyle={styles.username}
         description={`Role: ${item.role.toUpperCase()}`}
         left={(props) => (
           <Avatar.Icon
             {...props}
-            icon={item.role === "staff" ? "account-tie" : "account"}
+            icon={item.role === "staff" ? "account-tie" : "account-cog"}
             backgroundColor={item.isActive ? "#004d4015" : "#f4433615"}
             color={item.isActive ? "#004d40" : "#f44336"}
           />
@@ -128,15 +171,58 @@ export default function ManageUsersScreen() {
 
   return (
     <View style={styles.container}>
+      <LinearGradient colors={["#004d40", "#00695c"]} style={styles.header}>
+        <View style={isTablet ? styles.headerContentTablet : styles.headerContent}>
+          <Searchbar
+            placeholder="Search staff..."
+            onChangeText={handleSearch}
+            value={searchQuery}
+            style={[styles.searchBar, isTablet && { flex: 1, marginRight: 15 }]}
+            iconColor="#004d40"
+          />
+          <View style={[styles.filterContainer, isTablet && { marginTop: 0 }]}>
+            <Chip 
+              selected={roleFilter === ""} 
+              onPress={() => setRoleFilter("")}
+              style={[styles.chip, roleFilter === "" && styles.chipSelected]}
+              textStyle={{ color: roleFilter === "" ? "white" : "#004d40" }}
+            >
+              All
+            </Chip>
+            <Chip 
+              selected={roleFilter === "admin"} 
+              onPress={() => setRoleFilter("admin")}
+              style={[styles.chip, roleFilter === "admin" && styles.chipSelected]}
+              textStyle={{ color: roleFilter === "admin" ? "white" : "#004d40" }}
+            >
+              Admin
+            </Chip>
+            <Chip 
+              selected={roleFilter === "staff"} 
+              onPress={() => setRoleFilter("staff")}
+              style={[styles.chip, roleFilter === "staff" && styles.chipSelected]}
+              textStyle={{ color: roleFilter === "staff" ? "white" : "#004d40" }}
+            >
+              Staff
+            </Chip>
+          </View>
+        </View>
+      </LinearGradient>
+
       <FlatList
         data={users}
         keyExtractor={(item) => item._id}
         renderItem={renderUserItem}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        numColumns={isTablet ? 2 : 1}
+        key={isTablet ? "tablet" : "mobile"}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={["#004d40"]} />}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={() => loadingMore ? <ActivityIndicator style={{ margin: 20 }} color="#004d40" /> : null}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <View style={styles.center}>
-            <Text>{loading ? "Loading users..." : "No other users found."}</Text>
+            <Text>{loading ? "Loading users..." : "No users found."}</Text>
           </View>
         }
       />
@@ -145,7 +231,7 @@ export default function ManageUsersScreen() {
         <Modal
           visible={editVisible}
           onDismiss={() => setEditVisible(false)}
-          contentContainerStyle={styles.modal}
+          contentContainerStyle={[styles.modal, isTablet && { width: 500, alignSelf: "center" }]}
         >
           <Text variant="titleLarge" style={styles.modalTitle}>Edit User</Text>
           <TextInput
@@ -187,14 +273,58 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#f8f9fa",
   },
+  header: {
+    paddingTop: 50,
+    paddingBottom: 25,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 35,
+    borderBottomRightRadius: 35,
+    elevation: 8,
+  },
+  headerContent: {
+    flexDirection: "column",
+  },
+  headerContentTablet: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  searchBar: {
+    backgroundColor: "white",
+    borderRadius: 15,
+    height: 50,
+    elevation: 4,
+  },
+  filterContainer: {
+    flexDirection: "row",
+    marginTop: 15,
+    flexWrap: "wrap",
+  },
+  chip: {
+    backgroundColor: "#e0f2f1",
+    marginRight: 6,
+    marginBottom: 6,
+    borderRadius: 10,
+  },
+  chipSelected: {
+    backgroundColor: "#004d40",
+  },
   list: {
-    padding: 15,
+    padding: 10,
+    paddingBottom: 100,
   },
   card: {
     backgroundColor: "white",
-    marginBottom: 10,
-    borderRadius: 12,
+    margin: 6,
+    borderRadius: 15,
     overflow: "hidden",
+    flex: 1,
+  },
+  tabletCard: {
+    flex: 0.5,
+  },
+  username: {
+    fontWeight: "bold",
+    color: "#333",
   },
   rightActions: {
     flexDirection: "row",
@@ -206,14 +336,14 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   center: {
-    marginTop: 50,
+    marginTop: 100,
     alignItems: "center",
   },
   modal: {
     backgroundColor: "white",
-    padding: 24,
+    padding: 30,
     margin: 20,
-    borderRadius: 24,
+    borderRadius: 25,
   },
   modalTitle: {
     marginBottom: 20,
@@ -230,5 +360,6 @@ const styles = StyleSheet.create({
   },
   modalButton: {
     marginLeft: 10,
+    borderRadius: 10,
   },
 });

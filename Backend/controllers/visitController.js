@@ -145,8 +145,25 @@ const updateVisit = async (req, res) => {
   }
 };
 
+// @desc    Get visit by ID
+// @route   GET /api/visits/:id
+const getVisitById = async (req, res) => {
+  try {
+    const visit = await Visit.findById(req.params.id)
+      .populate("patientId")
+      .populate("medicines.medicineId");
+    if (!visit) {
+      return res.status(404).json({ message: "Visit not found" });
+    }
+    res.json(visit);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   addVisit,
   getVisits,
   updateVisit,
+  getVisitById,
 };

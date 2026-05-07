@@ -48,7 +48,7 @@ export default function LoginScreen() {
             />
           </Surface>
           <Text variant="headlineMedium" style={styles.appTitle}>
-            HEKA
+            Patient
           </Text>
           <Text variant="bodyLarge" style={styles.appSubtitle}>
             Management System
@@ -109,7 +109,7 @@ export default function LoginScreen() {
 
           <Button
             mode="text"
-            onPress={() => {}}
+            onPress={() => { }}
             textColor="#666"
             style={styles.forgotBtn}
           >
