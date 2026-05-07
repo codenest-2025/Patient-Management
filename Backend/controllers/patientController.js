@@ -1,10 +1,12 @@
 const Patient = require("../models/Patient");
+const { getIO } = require("../config/socket");
 
 // @desc    Add new patient
 // @route   POST /api/patients
 const addPatient = async (req, res) => {
   try {
     const patient = await Patient.create(req.body);
+    getIO().emit("patient_changed");
     res.status(201).json(patient);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -57,6 +59,7 @@ const updatePatient = async (req, res) => {
       new: true,
     });
     if (patient) {
+      getIO().emit("patient_changed");
       res.json(patient);
     } else {
       res.status(404).json({ message: "Patient not found" });
@@ -73,6 +76,7 @@ const deletePatient = async (req, res) => {
     const patient = await Patient.findById(req.params.id);
     if (patient) {
       await patient.deleteOne();
+      getIO().emit("patient_changed");
       res.json({ message: "Patient removed" });
     } else {
       res.status(404).json({ message: "Patient not found" });

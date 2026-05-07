@@ -1,9 +1,13 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import { View, StyleSheet, FlatList, RefreshControl } from "react-native";
 import { Text, List, FAB, Avatar, Divider, IconButton, Portal, Modal, TextInput, Button } from "react-native-paper";
 import api from "../../services/api";
+import { AuthContext } from "../../context/AuthContext";
+import { SocketContext } from "../../context/SocketContext";
 
 export default function MedicineListScreen({ navigation }) {
+  const { userInfo } = useContext(AuthContext);
+  const socket = useContext(SocketContext);
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -29,6 +33,21 @@ export default function MedicineListScreen({ navigation }) {
   useEffect(() => {
     fetchMedicines();
   }, []);
+
+  useEffect(() => {
+    if (socket) {
+      const handler = () => {
+        console.log("Stock update received via Socket");
+        fetchMedicines();
+      };
+
+      socket.on("stock_changed", handler);
+
+      return () => {
+        socket.off("stock_changed", handler);
+      };
+    }
+  }, [socket]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -117,18 +136,20 @@ export default function MedicineListScreen({ navigation }) {
               mode="contained" 
               onPress={() => handleUpdateStock(true)} 
               loading={updating} 
-              style={[styles.modalButton, { backgroundColor: "#4caf50" }]}
+              style={[styles.modalButton, { backgroundColor: "#4caf50" }, userInfo?.role === "manager" && { flex: 1 }]}
             >
               Add
             </Button>
-            <Button 
-              mode="contained" 
-              onPress={() => handleUpdateStock(false)} 
-              loading={updating} 
-              style={[styles.modalButton, { backgroundColor: "#f44336" }]}
-            >
-              Remove
-            </Button>
+            {userInfo?.role !== "manager" && (
+              <Button 
+                mode="contained" 
+                onPress={() => handleUpdateStock(false)} 
+                loading={updating} 
+                style={[styles.modalButton, { backgroundColor: "#f44336" }]}
+              >
+                Remove
+              </Button>
+            )}
           </View>
         </Modal>
       </Portal>

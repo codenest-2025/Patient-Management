@@ -1,10 +1,12 @@
 const Medicine = require("../models/Medicine");
+const { getIO } = require("../config/socket");
 
 // @desc    Add new medicine
 // @route   POST /api/medicines
 const addMedicine = async (req, res) => {
   try {
     const medicine = await Medicine.create(req.body);
+    getIO().emit("stock_changed");
     res.status(201).json(medicine);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -27,12 +29,17 @@ const getMedicines = async (req, res) => {
 const updateStock = async (req, res) => {
   const { amount } = req.body; // positive for increase, negative for decrease
   try {
+    if (req.user.role === "manager" && amount < 0) {
+      return res.status(403).json({ message: "Managers are not allowed to remove stock" });
+    }
+
     const medicine = await Medicine.findByIdAndUpdate(
       req.params.id,
       { $inc: { stock: amount } },
       { new: true }
     );
     if (medicine) {
+      getIO().emit("stock_changed");
       res.json(medicine);
     } else {
       res.status(404).json({ message: "Medicine not found" });
@@ -46,9 +53,14 @@ const updateStock = async (req, res) => {
 // @route   DELETE /api/medicines/:id
 const deleteMedicine = async (req, res) => {
   try {
+    if (req.user.role === "manager") {
+      return res.status(403).json({ message: "Managers are not allowed to delete medicines" });
+    }
+
     const medicine = await Medicine.findById(req.params.id);
     if (medicine) {
       await medicine.deleteOne();
+      getIO().emit("stock_changed");
       res.json({ message: "Medicine removed" });
     } else {
       res.status(404).json({ message: "Medicine not found" });

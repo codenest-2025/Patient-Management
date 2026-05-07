@@ -3,6 +3,7 @@ import { View, StyleSheet, ScrollView, RefreshControl, Dimensions } from "react-
 import { Text, Card, List, Avatar, Button, IconButton, Surface } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import { AuthContext } from "../../context/AuthContext";
+import { SocketContext } from "../../context/SocketContext";
 import api from "../../services/api";
 
 const { width } = Dimensions.get("window");
@@ -30,6 +31,7 @@ export default function DashboardScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { logout, userInfo } = useContext(AuthContext);
+  const socket = useContext(SocketContext);
 
   const fetchSummary = async () => {
     try {
@@ -46,6 +48,25 @@ export default function DashboardScreen() {
   useEffect(() => {
     fetchSummary();
   }, []);
+
+  useEffect(() => {
+    if (socket) {
+      const handler = () => {
+        console.log("Real-time update received on Dashboard");
+        fetchSummary();
+      };
+
+      socket.on("patient_changed", handler);
+      socket.on("stock_changed", handler);
+      socket.on("visit_added", handler);
+
+      return () => {
+        socket.off("patient_changed", handler);
+        socket.off("stock_changed", handler);
+        socket.off("visit_added", handler);
+      };
+    }
+  }, [socket]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
