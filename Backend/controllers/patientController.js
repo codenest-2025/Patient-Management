@@ -16,7 +16,9 @@ const addPatient = async (req, res) => {
 // @desc    Get all patients
 // @route   GET /api/patients
 const getPatients = async (req, res) => {
-  const { search } = req.query;
+  const { search, hasDue, page = 1, limit = 10 } = req.query;
+  const skip = (page - 1) * limit;
+
   let query = {};
 
   if (search) {
@@ -28,9 +30,23 @@ const getPatients = async (req, res) => {
     };
   }
 
+  if (hasDue === "true") {
+    query.totalDue = { $gt: 0 };
+  }
+
   try {
-    const patients = await Patient.find(query).sort({ updatedAt: -1 });
-    res.json(patients);
+    const total = await Patient.countDocuments(query);
+    const patients = await Patient.find(query)
+      .sort({ updatedAt: -1 })
+      .skip(parseInt(skip))
+      .limit(parseInt(limit));
+
+    res.json({
+      patients,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

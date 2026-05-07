@@ -11,7 +11,8 @@ export default function VisitHistoryScreen() {
   const fetchVisits = async () => {
     try {
       const { data } = await api.get("/visits");
-      setVisits(data.sort((a, b) => new Date(b.visitDate) - new Date(a.visitDate)));
+      // Backend now returns { visits, total, page, pages }
+      setVisits(data.visits || []);
     } catch (e) {
       console.error(e);
     } finally {

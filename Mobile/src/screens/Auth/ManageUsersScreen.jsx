@@ -18,7 +18,8 @@ export default function ManageUsersScreen() {
   const fetchUsers = async () => {
     try {
       const { data } = await api.get("/auth/users");
-      setUsers(data);
+      // Backend now returns { users, total, page, pages }
+      setUsers(data.users || []);
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Failed to fetch users");

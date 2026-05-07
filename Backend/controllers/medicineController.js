@@ -16,9 +16,32 @@ const addMedicine = async (req, res) => {
 // @desc    Get all medicines
 // @route   GET /api/medicines
 const getMedicines = async (req, res) => {
+  const { search, lowStock, page = 1, limit = 100 } = req.query; // Larger default limit for medicines as they are often used in dropdowns
+  const skip = (page - 1) * limit;
+
+  let query = {};
+
+  if (search) {
+    query.name = { $regex: search, $options: "i" };
+  }
+
+  if (lowStock === "true") {
+    query.stock = { $lt: 10 };
+  }
+
   try {
-    const medicines = await Medicine.find().sort({ name: 1 });
-    res.json(medicines);
+    const total = await Medicine.countDocuments(query);
+    const medicines = await Medicine.find(query)
+      .sort({ name: 1 })
+      .skip(parseInt(skip))
+      .limit(parseInt(limit));
+
+    res.json({
+      medicines,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

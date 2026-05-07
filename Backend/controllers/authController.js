@@ -71,9 +71,32 @@ const generateToken = (id) => {
 // @desc    Get all users
 // @route   GET /api/auth/users
 const getUsers = async (req, res) => {
+  const { search, role, page = 1, limit = 10 } = req.query;
+  const skip = (page - 1) * limit;
+
+  let query = { _id: { $ne: req.user._id } };
+
+  if (search) {
+    query.username = { $regex: search, $options: "i" };
+  }
+
+  if (role) {
+    query.role = role;
+  }
+
   try {
-    const users = await User.find({ _id: { $ne: req.user._id } }).select("-password");
-    res.json(users);
+    const total = await User.countDocuments(query);
+    const users = await User.find(query)
+      .select("-password")
+      .skip(parseInt(skip))
+      .limit(parseInt(limit));
+
+    res.json({
+      users,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

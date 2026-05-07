@@ -22,7 +22,8 @@ export default function MedicineListScreen({ navigation }) {
   const fetchMedicines = async () => {
     try {
       const { data } = await api.get("/medicines");
-      setMedicines(data);
+      // Backend now returns { medicines, total, page, pages }
+      setMedicines(data.medicines || []);
     } catch (e) {
       console.error(e);
     } finally {

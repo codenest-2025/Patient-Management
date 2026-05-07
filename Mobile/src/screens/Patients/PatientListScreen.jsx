@@ -16,7 +16,8 @@ export default function PatientListScreen({ navigation }) {
   const fetchPatients = async (query = "") => {
     try {
       const { data } = await api.get(`/patients?search=${query}`);
-      setPatients(data);
+      // Backend now returns { patients, total, page, pages }
+      setPatients(data.patients || []);
     } catch (e) {
       console.error(e);
     } finally {

@@ -49,12 +49,40 @@ const addVisit = async (req, res) => {
 // @desc    Get all visits
 // @route   GET /api/visits
 const getVisits = async (req, res) => {
+  const { patientId, startDate, endDate, page = 1, limit = 20 } = req.query;
+  const skip = (page - 1) * limit;
+
+  let query = {};
+
+  if (patientId) {
+    query.patientId = patientId;
+  }
+
+  if (startDate || endDate) {
+    query.visitDate = {};
+    if (startDate) {
+      query.visitDate.$gte = new Date(startDate);
+    }
+    if (endDate) {
+      query.visitDate.$lte = new Date(endDate);
+    }
+  }
+
   try {
-    const visits = await Visit.find()
+    const total = await Visit.countDocuments(query);
+    const visits = await Visit.find(query)
+      .sort({ visitDate: -1 })
+      .skip(parseInt(skip))
+      .limit(parseInt(limit))
       .populate("patientId")
       .populate("medicines.medicineId");
 
-    res.json(visits);
+    res.json({
+      visits,
+      total,
+      page: parseInt(page),
+      pages: Math.ceil(total / limit),
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
