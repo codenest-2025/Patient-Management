@@ -7,6 +7,7 @@ import { SocketContext } from "../../context/SocketContext";
 
 export default function MedicineListScreen({ navigation }) {
   const { userInfo } = useContext(AuthContext);
+  const isStaff = userInfo?.role === "staff";
   const socket = useContext(SocketContext);
   const [medicines, setMedicines] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -136,11 +137,11 @@ export default function MedicineListScreen({ navigation }) {
               mode="contained" 
               onPress={() => handleUpdateStock(true)} 
               loading={updating} 
-              style={[styles.modalButton, { backgroundColor: "#4caf50" }, userInfo?.role === "manager" && { flex: 1 }]}
+              style={[styles.modalButton, { backgroundColor: "#4caf50" }, userInfo?.role === "staff" && { flex: 1 }]}
             >
               Add
             </Button>
-            {userInfo?.role !== "manager" && (
+            {userInfo?.role !== "staff" && (
               <Button 
                 mode="contained" 
                 onPress={() => handleUpdateStock(false)} 

@@ -26,7 +26,7 @@ const SummaryCard = ({ title, value, icon, color }) => (
   </Surface>
 );
 
-export default function DashboardScreen() {
+export default function DashboardScreen({ navigation }) {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -39,6 +39,9 @@ export default function DashboardScreen() {
   const [managerPassword, setManagerPassword] = useState("");
   const [managerLoading, setManagerLoading] = useState(false);
   const [managerError, setManagerError] = useState("");
+
+  // Logout Confirmation State
+  const [logoutVisible, setLogoutVisible] = useState(false);
 
   const fetchSummary = async () => {
     try {
@@ -142,7 +145,7 @@ export default function DashboardScreen() {
             )}
             <IconButton 
               icon="logout" 
-              onPress={logout} 
+              onPress={() => setLogoutVisible(true)} 
               iconColor="white" 
               containerColor="rgba(255,255,255,0.2)"
             />
@@ -222,40 +225,119 @@ export default function DashboardScreen() {
         </Surface>
       )}
       
+      {userInfo?.role === "admin" && (
+        <View style={styles.adminPanel}>
+          <View style={styles.sectionHeader}>
+            <Text variant="titleMedium" style={styles.sectionTitle}>Admin Panel</Text>
+          </View>
+          <Surface style={styles.adminCard} elevation={1}>
+            <List.Item
+              title="User Management"
+              description="Edit, Delete, or Deactivate Staff Accounts"
+              left={(props) => <Avatar.Icon {...props} icon="account-cog" color="#004d40" backgroundColor="#e0f2f1" />}
+              right={(props) => <List.Icon {...props} icon="chevron-right" />}
+              onPress={() => navigation.navigate("ManageUsers")}
+            />
+          </Surface>
+        </View>
+      )}
+
       <View style={{ height: 30 }} />
 
       <Portal>
         <Modal
           visible={managerModalVisible}
           onDismiss={() => setManagerModalVisible(false)}
-          contentContainerStyle={styles.modal}
+          contentContainerStyle={styles.modalContainer}
         >
-          <Text variant="titleLarge" style={styles.modalTitle}>Add New Manager</Text>
-          <TextInput
-            label="Username"
-            value={managerUsername}
-            onChangeText={setManagerUsername}
-            mode="outlined"
-            style={styles.modalInput}
-            autoCapitalize="none"
-          />
-          <TextInput
-            label="Password"
-            value={managerPassword}
-            onChangeText={setManagerPassword}
-            mode="outlined"
-            style={styles.modalInput}
-            secureTextEntry
-          />
-          {managerError ? <HelperText type="error">{managerError}</HelperText> : null}
-          <Button
-            mode="contained"
-            onPress={handleAddManager}
-            loading={managerLoading}
-            style={styles.modalButton}
-          >
-            Create Manager
-          </Button>
+          <View style={styles.modalHeader}>
+            <Avatar.Icon icon="account-plus" size={48} color="white" backgroundColor="#004d40" />
+            <Text variant="headlineSmall" style={styles.modalHeaderTitle}>Add New Staff</Text>
+          </View>
+          
+          <View style={styles.modalBody}>
+            <Text variant="bodyMedium" style={styles.modalSubtitle}>Create a new Receptionist or Staff account.</Text>
+            
+            <TextInput
+              label="Username"
+              value={managerUsername}
+              onChangeText={setManagerUsername}
+              mode="outlined"
+              style={styles.modalInput}
+              autoCapitalize="none"
+              outlineColor="#e0e0e0"
+              activeOutlineColor="#004d40"
+              left={<TextInput.Icon icon="account" color="#004d40" />}
+            />
+            <TextInput
+              label="Password"
+              value={managerPassword}
+              onChangeText={setManagerPassword}
+              mode="outlined"
+              style={styles.modalInput}
+              secureTextEntry
+              outlineColor="#e0e0e0"
+              activeOutlineColor="#004d40"
+              left={<TextInput.Icon icon="lock" color="#004d40" />}
+            />
+            {managerError ? <HelperText type="error">{managerError}</HelperText> : null}
+          </View>
+
+          <View style={styles.modalFooter}>
+            <Button
+              mode="text"
+              onPress={() => setManagerModalVisible(false)}
+              style={styles.modalFooterButton}
+              textColor="#757575"
+            >
+              Cancel
+            </Button>
+            <Button
+              mode="contained"
+              onPress={handleAddManager}
+              loading={managerLoading}
+              style={[styles.modalFooterButton, { backgroundColor: "#004d40" }]}
+              labelStyle={{ fontWeight: "bold" }}
+            >
+              Create
+            </Button>
+          </View>
+        </Modal>
+
+        <Modal
+          visible={logoutVisible}
+          onDismiss={() => setLogoutVisible(false)}
+          contentContainerStyle={styles.modalContainer}
+        >
+          <View style={[styles.modalHeader, { backgroundColor: "#fff5f5", borderBottomWidth: 0 }]}>
+            <Avatar.Icon icon="logout" size={64} color="#f44336" backgroundColor="#ffebee" />
+          </View>
+          
+          <View style={[styles.modalBody, { alignItems: "center", paddingBottom: 10 }]}>
+            <Text variant="headlineSmall" style={[styles.modalHeaderTitle, { color: "#333", marginTop: 0 }]}>Confirm Logout</Text>
+            <Text variant="bodyMedium" style={{ textAlign: "center", color: "#666", marginTop: 8 }}>
+              Are you sure you want to exit? You will need to log in again to access your dashboard.
+            </Text>
+          </View>
+
+          <View style={styles.modalFooter}>
+            <Button
+              mode="outlined"
+              onPress={() => setLogoutVisible(false)}
+              style={[styles.modalFooterButton, { borderColor: "#e0e0e0" }]}
+              textColor="#757575"
+            >
+              Stay
+            </Button>
+            <Button
+              mode="contained"
+              onPress={logout}
+              style={[styles.modalFooterButton, { backgroundColor: "#f44336" }]}
+              labelStyle={{ fontWeight: "bold" }}
+            >
+              Logout
+            </Button>
+          </View>
         </Modal>
       </Portal>
     </ScrollView>
@@ -383,24 +465,55 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#f8f9fa",
   },
-  modal: {
+  modalContainer: {
     backgroundColor: "white",
-    padding: 20,
     margin: 20,
-    borderRadius: 16,
+    borderRadius: 24,
+    overflow: "hidden",
   },
-  modalTitle: {
-    marginBottom: 20,
+  modalHeader: {
+    padding: 24,
+    alignItems: "center",
+    backgroundColor: "#f5fbf9",
+    borderBottomWidth: 1,
+    borderBottomColor: "#edf2f0",
+  },
+  modalHeaderTitle: {
     fontWeight: "bold",
+    marginTop: 12,
     color: "#004d40",
+  },
+  modalSubtitle: {
     textAlign: "center",
+    color: "#666",
+    marginBottom: 20,
+  },
+  modalBody: {
+    padding: 24,
   },
   modalInput: {
-    marginBottom: 15,
+    marginBottom: 16,
+    backgroundColor: "white",
   },
-  modalButton: {
+  modalFooter: {
+    flexDirection: "row",
+    padding: 16,
+    backgroundColor: "#f8f9fa",
+    justifyContent: "flex-end",
+  },
+  modalFooterButton: {
+    marginLeft: 12,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+  },
+  adminPanel: {
     marginTop: 10,
-    backgroundColor: "#004d40",
-    paddingVertical: 6,
+    marginBottom: 20,
+  },
+  adminCard: {
+    backgroundColor: "white",
+    marginHorizontal: 20,
+    borderRadius: 16,
+    overflow: "hidden",
   },
 });

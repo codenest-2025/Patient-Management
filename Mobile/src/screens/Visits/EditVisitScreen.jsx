@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { Text, Card, TextInput, Button, IconButton, List, Divider, Surface, HelperText, Portal, Modal, Searchbar } from "react-native-paper";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import api from "../../services/api";
 
-export default function CreateVisitScreen({ route, navigation }) {
-  const { patientId } = route.params;
+export default function EditVisitScreen({ route, navigation }) {
+  const { visitId, patientId } = route.params;
   const [patient, setPatient] = useState(null);
   const [allMedicines, setAllMedicines] = useState([]);
   const [selectedMedicines, setSelectedMedicines] = useState([]);
@@ -14,7 +13,8 @@ export default function CreateVisitScreen({ route, navigation }) {
   const [payableAmount, setPayableAmount] = useState("");
   const [paidAmount, setPaidAmount] = useState("");
   const [purpose, setPurpose] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   // Medicine Picker State
@@ -28,18 +28,37 @@ export default function CreateVisitScreen({ route, navigation }) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [pRes, mRes] = await Promise.all([
+        const [pRes, mRes, vRes] = await Promise.all([
           api.get(`/patients/${patientId}`),
-          api.get("/medicines")
+          api.get("/medicines"),
+          api.get("/visits") // We fetch all then filter, or we can add a getVisitById endpoint. 
+          // For now, I'll assume I can find it in the list or add the endpoint.
         ]);
+        
         setPatient(pRes.data);
         setAllMedicines(mRes.data);
+        
+        const currentVisit = vRes.data.find(v => v._id === visitId);
+        if (currentVisit) {
+          setPayableAmount(currentVisit.payableAmount.toString());
+          setPaidAmount(currentVisit.paidAmount.toString());
+          setPurpose(currentVisit.purpose || "");
+          setSelectedMedicines(currentVisit.medicines.map(m => ({
+            medicineId: m.medicineId._id || m.medicineId,
+            name: m.medicineId.name || "Unknown",
+            quantity: m.quantity,
+            stock: 999 // We don't strictly need stock check for editing existing quantities
+          })));
+        }
       } catch (e) {
         console.error(e);
+        Alert.alert("Error", "Failed to fetch data");
+      } finally {
+        setLoading(false);
       }
     };
     fetchData();
-  }, [patientId]);
+  }, [visitId, patientId]);
 
   const addMedicine = (med) => {
     const exists = selectedMedicines.find(m => m.medicineId === med._id);
@@ -61,23 +80,22 @@ export default function CreateVisitScreen({ route, navigation }) {
     setSelectedMedicines(selectedMedicines.map(m => {
       if (m.medicineId === id) {
         const newQty = Math.max(1, m.quantity + change);
-        return { ...m, quantity: Math.min(newQty, m.stock) };
+        return { ...m, quantity: newQty };
       }
       return m;
     }));
   };
 
-  const handleCreateVisit = async () => {
+  const handleUpdateVisit = async () => {
     if (!payableAmount || isNaN(payableAmount)) {
       setError("Please enter a valid payable amount");
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
     setError("");
     try {
       const visitData = {
-        patientId,
         medicines: selectedMedicines.map(m => ({
           medicineId: m.medicineId,
           quantity: m.quantity
@@ -87,28 +105,28 @@ export default function CreateVisitScreen({ route, navigation }) {
         purpose
       };
 
-      await api.post("/visits", visitData);
-      navigation.navigate("PatientDetail", { patientId });
+      await api.put(`/visits/${visitId}`, visitData);
+      navigation.goBack();
     } catch (e) {
-      setError(e.response?.data?.message || "Failed to record visit");
+      setError(e.response?.data?.message || "Failed to update visit");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
   const dueAmount = (parseFloat(payableAmount || 0) - parseFloat(paidAmount || 0)).toFixed(2);
 
-  if (!patient) return null;
+  if (loading || !patient) return null;
 
   return (
     <ScrollView style={styles.container}>
       <Surface style={styles.header} elevation={1}>
-        <Text variant="titleLarge" style={styles.patientName}>Visit for: {patient.name}</Text>
-        <Text style={styles.patientMobile}>{patient.mobile1}</Text>
+        <Text variant="titleLarge" style={styles.patientName}>Edit Visit: {patient.name}</Text>
+        <Text style={styles.headerSubtitle}>Correcting mistakes in visit record</Text>
       </Surface>
 
       <Card style={styles.sectionCard}>
-        <Card.Title title="Select Medicines" left={(props) => <List.Icon {...props} icon="pill" />} />
+        <Card.Title title="Medicines" left={(props) => <List.Icon {...props} icon="pill" />} />
         <Card.Content>
           <Button 
             mode="outlined" 
@@ -207,7 +225,7 @@ export default function CreateVisitScreen({ route, navigation }) {
           />
           
           <View style={styles.dueContainer}>
-            <Text>Remaining Due:</Text>
+            <Text>Updated Due:</Text>
             <Text variant="titleLarge" style={{ color: dueAmount > 0 ? "#f44336" : "#4caf50" }}>₹{dueAmount}</Text>
           </View>
 
@@ -223,12 +241,12 @@ export default function CreateVisitScreen({ route, navigation }) {
 
           <Button
             mode="contained"
-            onPress={handleCreateVisit}
-            loading={loading}
-            disabled={loading}
+            onPress={handleUpdateVisit}
+            loading={saving}
+            disabled={saving}
             style={styles.saveButton}
           >
-            Record Visit & Update Stock
+            Update Visit & Adjust Stock
           </Button>
         </Card.Content>
       </Card>
@@ -251,8 +269,10 @@ const styles = StyleSheet.create({
     color: "white",
     fontWeight: "bold",
   },
-  patientMobile: {
+  headerSubtitle: {
     color: "#e0f2f1",
+    fontSize: 12,
+    marginTop: 4,
   },
   sectionCard: {
     margin: 10,
@@ -312,14 +332,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
     color: "#999",
   },
-  divider: {
+  medName: {
     fontSize: 12,
     fontWeight: "bold",
     color: "#004d40",
-  },
-  medStock: {
-    fontSize: 10,
-    color: "#757575",
   },
   divider: {
     marginVertical: 15,

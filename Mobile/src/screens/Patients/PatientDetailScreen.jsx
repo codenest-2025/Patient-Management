@@ -1,11 +1,15 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import { View, StyleSheet, ScrollView, RefreshControl, FlatList } from "react-native";
 import { Text, Card, List, Button, Avatar, Divider, Portal, Modal, TextInput, HelperText, Surface, IconButton } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import api from "../../services/api";
+import { AuthContext } from "../../context/AuthContext";
+import { SocketContext } from "../../context/SocketContext";
 
 export default function PatientDetailScreen({ route, navigation }) {
   const { patientId } = route.params;
+  const { userInfo } = useContext(AuthContext);
+  const socket = useContext(SocketContext);
   const [patient, setPatient] = useState(null);
   const [visits, setVisits] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +40,23 @@ export default function PatientDetailScreen({ route, navigation }) {
   useEffect(() => {
     fetchPatientData();
   }, [patientId]);
+
+  useEffect(() => {
+    if (socket) {
+      const handler = () => {
+        console.log("Real-time update received on Patient Detail");
+        fetchPatientData();
+      };
+
+      socket.on("patient_changed", handler);
+      socket.on("visit_added", handler);
+
+      return () => {
+        socket.off("patient_changed", handler);
+        socket.off("visit_added", handler);
+      };
+    }
+  }, [socket, patientId]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -88,7 +109,16 @@ export default function PatientDetailScreen({ route, navigation }) {
               color="white"
             />
             <View style={styles.headerText}>
-              <Text variant="headlineSmall" style={styles.patientName}>{patient.name}</Text>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text variant="headlineSmall" style={styles.patientName}>{patient.name}</Text>
+                <IconButton 
+                  icon="pencil-outline" 
+                  iconColor="white" 
+                  size={20} 
+                  onPress={() => navigation.navigate("EditPatient", { patientId })}
+                  containerColor="rgba(255,255,255,0.15)"
+                />
+              </View>
               <View style={styles.contactRow}>
                 <IconButton icon="phone" size={16} iconColor="rgba(255,255,255,0.7)" />
                 <Text style={styles.headerSubtext}>{patient.mobile1}</Text>
@@ -144,7 +174,17 @@ export default function PatientDetailScreen({ route, navigation }) {
                 left={props => <Avatar.Icon {...props} icon="calendar-clock" size={40} backgroundColor="#e0f2f1" color="#004d40" />}
                 right={props => (
                   <View style={styles.historyRight}>
-                    <Text variant="labelSmall" style={styles.purposeText}>{visit.purpose || "Regular Visit"}</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center" }}>
+                      <Text variant="labelSmall" style={styles.purposeText}>{visit.purpose || "Regular Visit"}</Text>
+                      {userInfo?.role === "admin" && (
+                        <IconButton 
+                          icon="pencil" 
+                          size={18} 
+                          onPress={() => navigation.navigate("EditVisit", { visitId: visit._id, patientId })} 
+                          iconColor="#004d40"
+                        />
+                      )}
+                    </View>
                   </View>
                 )}
               />

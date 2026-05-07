@@ -29,8 +29,8 @@ const getMedicines = async (req, res) => {
 const updateStock = async (req, res) => {
   const { amount } = req.body; // positive for increase, negative for decrease
   try {
-    if (req.user.role === "manager" && amount < 0) {
-      return res.status(403).json({ message: "Managers are not allowed to remove stock" });
+    if (req.user.role === "staff" && amount < 0) {
+      return res.status(403).json({ message: "Staff are not allowed to remove stock" });
     }
 
     const medicine = await Medicine.findByIdAndUpdate(
@@ -53,8 +53,8 @@ const updateStock = async (req, res) => {
 // @route   DELETE /api/medicines/:id
 const deleteMedicine = async (req, res) => {
   try {
-    if (req.user.role === "manager") {
-      return res.status(403).json({ message: "Managers are not allowed to delete medicines" });
+    if (req.user.role === "staff") {
+      return res.status(403).json({ message: "Staff are not allowed to delete medicines" });
     }
 
     const medicine = await Medicine.findById(req.params.id);
