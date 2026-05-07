@@ -1,10 +1,13 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import { View, StyleSheet, FlatList, RefreshControl } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { Text, Searchbar, List, FAB, Avatar, Divider, Chip, Surface } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import api from "../../services/api";
+import { SocketContext } from "../../context/SocketContext";
 
 export default function PatientListScreen({ navigation }) {
+  const socket = useContext(SocketContext);
   const [patients, setPatients] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -22,9 +25,26 @@ export default function PatientListScreen({ navigation }) {
     }
   };
 
+  useFocusEffect(
+    useCallback(() => {
+      fetchPatients(searchQuery);
+    }, [searchQuery])
+  );
+
   useEffect(() => {
-    fetchPatients();
-  }, []);
+    if (socket) {
+      const handler = () => {
+        console.log("Real-time update received on Patient List");
+        fetchPatients(searchQuery);
+      };
+
+      socket.on("patient_changed", handler);
+
+      return () => {
+        socket.off("patient_changed", handler);
+      };
+    }
+  }, [socket, searchQuery]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

@@ -1,5 +1,6 @@
 const Patient = require("../models/Patient");
 const Visit = require("../models/Visit");
+const { getIO } = require("../config/socket");
 
 // @desc    Clear due amount for a patient
 // @route   POST /api/payments/clear-due
@@ -27,6 +28,8 @@ const clearDue = async (req, res) => {
       purpose: notes || "Due Clearance",
       visitDate: new Date(),
     });
+
+    getIO().emit("patient_changed");
 
     res.json({
       message: "Payment recorded successfully",
