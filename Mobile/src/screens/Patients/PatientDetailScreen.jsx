@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext } from "react";
-import { View, StyleSheet, ScrollView, RefreshControl, FlatList } from "react-native";
+import { View, StyleSheet, ScrollView, RefreshControl, FlatList, ActivityIndicator } from "react-native";
 import { Text, Card, List, Button, Avatar, Divider, Portal, Modal, TextInput, HelperText, Surface, IconButton } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import api from "../../services/api";
@@ -23,12 +23,14 @@ export default function PatientDetailScreen({ route, navigation }) {
 
   const fetchPatientData = async () => {
     try {
-      const pRes = await api.get(`/patients/${patientId}`);
+      // Parallel fetch — both requests fire at the same time
+      const [pRes, vRes] = await Promise.all([
+        api.get(`/patients/${patientId}`),
+        api.get("/visits", { params: { patientId } }),
+      ]);
       setPatient(pRes.data);
-      
-      const vRes = await api.get("/visits", { params: { patientId } }); // Optimize by passing patientId to backend
-      const patientVisits = vRes.data.visits || [];
-      setVisits(patientVisits.sort((a, b) => new Date(b.visitDate) - new Date(a.visitDate)));
+      // Backend already sorts by visitDate desc — no client-side sort needed
+      setVisits(vRes.data.visits || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -84,10 +86,11 @@ export default function PatientDetailScreen({ route, navigation }) {
     }
   };
 
-  if (loading || !patient) {
+  // Show a non-blocking spinner until the first load completes
+  if (loading && !patient) {
     return (
       <View style={styles.center}>
-        <Text variant="bodyLarge">Loading details...</Text>
+        <ActivityIndicator size="large" color="#004d40" />
       </View>
     );
   }

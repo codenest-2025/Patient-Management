@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import api from "../../services/api";
 import { AuthContext } from "../../context/AuthContext";
 import { SocketContext } from "../../context/SocketContext";
+import { useDebounce } from "../../utils/useDebounce";
 
 export default function MedicineListScreen({ navigation }) {
   const { width } = useWindowDimensions();
@@ -21,6 +22,7 @@ export default function MedicineListScreen({ navigation }) {
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [lowStockOnly, setLowStockOnly] = useState(false);
   
   // Pagination State
@@ -68,30 +70,35 @@ export default function MedicineListScreen({ navigation }) {
     fetchMedicines(1, false, searchQuery, lowStockOnly);
   }, [lowStockOnly]);
 
+  // Fire fetch when debounced search value changes (300ms after user stops typing)
+  useEffect(() => {
+    fetchMedicines(1, false, debouncedSearch, lowStockOnly);
+  }, [debouncedSearch, lowStockOnly]);
+
   useEffect(() => {
     if (socket) {
       const handler = () => {
-        fetchMedicines(1, false, searchQuery, lowStockOnly);
+        fetchMedicines(1, false, debouncedSearch, lowStockOnly);
       };
       socket.on("stock_changed", handler);
       return () => socket.off("stock_changed", handler);
     }
-  }, [socket, searchQuery, lowStockOnly]);
+  }, [socket, debouncedSearch, lowStockOnly]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchMedicines(1, false, searchQuery, lowStockOnly);
-  }, [searchQuery, lowStockOnly]);
+    fetchMedicines(1, false, debouncedSearch, lowStockOnly);
+  }, [debouncedSearch, lowStockOnly]);
 
   const handleLoadMore = () => {
     if (!loadingMore && page < totalPages) {
-      fetchMedicines(page + 1, true, searchQuery, lowStockOnly);
+      fetchMedicines(page + 1, true, debouncedSearch, lowStockOnly);
     }
   };
 
+  // Only update state — the useEffect above fires the fetch after 300ms
   const handleSearch = (query) => {
     setSearchQuery(query);
-    fetchMedicines(1, false, query, lowStockOnly);
   };
 
   const handleUpdateStock = async (isIncrease) => {

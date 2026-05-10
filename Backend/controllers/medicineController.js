@@ -16,7 +16,7 @@ const addMedicine = async (req, res) => {
 // @desc    Get all medicines
 // @route   GET /api/medicines
 const getMedicines = async (req, res) => {
-  const { search, lowStock, page = 1, limit = 100 } = req.query; // Larger default limit for medicines as they are often used in dropdowns
+  const { search, lowStock, page = 1, limit = 20 } = req.query;
   const skip = (page - 1) * limit;
 
   let query = {};
