@@ -4,6 +4,7 @@ import { Text, List, Avatar, Divider, Chip, Searchbar, Surface } from "react-nat
 import { LinearGradient } from "expo-linear-gradient";
 import api from "../../services/api";
 import { SocketContext } from "../../context/SocketContext";
+import { useDebounce } from "../../utils/useDebounce";
 
 export default function VisitHistoryScreen() {
   const { width } = useWindowDimensions();
@@ -17,6 +18,7 @@ export default function VisitHistoryScreen() {
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [dateFilter, setDateFilter] = useState("all"); // all, today, week
 
   // Pagination State
@@ -76,34 +78,35 @@ export default function VisitHistoryScreen() {
     }
   };
 
+  // Fire fetch when debounced search value or date filter changes
   useEffect(() => {
-    fetchVisits(1, false, searchQuery, dateFilter);
-  }, [dateFilter]);
+    fetchVisits(1, false, debouncedSearch, dateFilter);
+  }, [debouncedSearch, dateFilter]);
 
   useEffect(() => {
     if (socket) {
       const handler = () => {
-        fetchVisits(1, false, searchQuery, dateFilter);
+        fetchVisits(1, false, debouncedSearch, dateFilter);
       };
       socket.on("visit_added", handler);
       return () => socket.off("visit_added", handler);
     }
-  }, [socket, searchQuery, dateFilter]);
+  }, [socket, debouncedSearch, dateFilter]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchVisits(1, false, searchQuery, dateFilter);
-  }, [searchQuery, dateFilter]);
+    fetchVisits(1, false, debouncedSearch, dateFilter);
+  }, [debouncedSearch, dateFilter]);
 
   const handleLoadMore = () => {
     if (!loadingMore && page < totalPages) {
-      fetchVisits(page + 1, true, searchQuery, dateFilter);
+      fetchVisits(page + 1, true, debouncedSearch, dateFilter);
     }
   };
 
+  // Only update state — the useEffect above triggers the actual fetch after 300ms
   const handleSearch = (query) => {
     setSearchQuery(query);
-    fetchVisits(1, false, query, dateFilter);
   };
 
   const renderVisitItem = ({ item }) => (

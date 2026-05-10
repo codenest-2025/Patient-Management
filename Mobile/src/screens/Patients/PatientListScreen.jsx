@@ -5,6 +5,7 @@ import { Text, Searchbar, List, FAB, Avatar, Divider, Chip, Surface } from "reac
 import { LinearGradient } from "expo-linear-gradient";
 import api from "../../services/api";
 import { SocketContext } from "../../context/SocketContext";
+import { useDebounce } from "../../utils/useDebounce";
 
 export default function PatientListScreen({ navigation }) {
   const socket = useContext(SocketContext);
@@ -15,6 +16,7 @@ export default function PatientListScreen({ navigation }) {
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearch = useDebounce(searchQuery, 300);
   const [dueOnly, setDueOnly] = useState(false);
 
   // Pagination State
@@ -54,34 +56,39 @@ export default function PatientListScreen({ navigation }) {
 
   useFocusEffect(
     useCallback(() => {
-      fetchPatients(1, false, searchQuery, dueOnly);
+      fetchPatients(1, false, debouncedSearch, dueOnly);
     }, [dueOnly])
   );
+
+  // Fire fetch when debounced search value changes (300ms after user stops typing)
+  useEffect(() => {
+    fetchPatients(1, false, debouncedSearch, dueOnly);
+  }, [debouncedSearch, dueOnly]);
 
   useEffect(() => {
     if (socket) {
       const handler = () => {
-        fetchPatients(1, false, searchQuery, dueOnly);
+        fetchPatients(1, false, debouncedSearch, dueOnly);
       };
       socket.on("patient_changed", handler);
       return () => socket.off("patient_changed", handler);
     }
-  }, [socket, searchQuery, dueOnly]);
+  }, [socket, debouncedSearch, dueOnly]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    fetchPatients(1, false, searchQuery, dueOnly);
-  }, [searchQuery, dueOnly]);
+    fetchPatients(1, false, debouncedSearch, dueOnly);
+  }, [debouncedSearch, dueOnly]);
 
   const handleLoadMore = () => {
     if (!loadingMore && page < totalPages) {
-      fetchPatients(page + 1, true, searchQuery, dueOnly);
+      fetchPatients(page + 1, true, debouncedSearch, dueOnly);
     }
   };
 
+  // Only update state — the useEffect above triggers the actual fetch after 300ms
   const handleSearch = (query) => {
     setSearchQuery(query);
-    fetchPatients(1, false, query, dueOnly);
   };
 
   const renderPatientItem = ({ item }) => (

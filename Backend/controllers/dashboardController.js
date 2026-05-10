@@ -7,14 +7,14 @@ const Visit = require("../models/Visit");
 const getSummary = async (req, res) => {
   try {
     const [totalPatients, totalMedicines, totalVisits, dueAggregation, lowStockMedicines] = await Promise.all([
-      Patient.countDocuments(),
-      Medicine.countDocuments(),
-      Visit.countDocuments(),
+      Patient.estimatedDocumentCount(),   // O(1) — reads collection metadata, no scan
+      Medicine.estimatedDocumentCount(),  // O(1) — reads collection metadata, no scan
+      Visit.estimatedDocumentCount(),     // O(1) — reads collection metadata, no scan
       Patient.aggregate([
         { $match: { totalDue: { $gt: 0 } } },
         { $group: { _id: null, total: { $sum: "$totalDue" } } }
       ]),
-      Medicine.find({ stock: { $lt: 10 } }).limit(20).lean()
+      Medicine.find({ stock: { $lt: 10 } }).sort({ stock: 1 }).limit(20).lean() // sorted: most critical first
     ]);
 
     const totalDueAmount = dueAggregation.length > 0 ? dueAggregation[0].total : 0;

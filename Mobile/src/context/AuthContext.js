@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import api from "../services/api";
+import api, { clearTokenCache } from "../services/api";
 
 export const AuthContext = createContext();
 
@@ -25,6 +25,7 @@ export const AuthProvider = ({ children }) => {
     setIsLoading(true);
     setUserToken(null);
     setUserInfo(null);
+    clearTokenCache(); // Invalidate in-memory token cache so next login gets a fresh token
     await AsyncStorage.removeItem("userToken");
     await AsyncStorage.removeItem("userInfo");
     setIsLoading(false);

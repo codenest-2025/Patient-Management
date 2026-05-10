@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Visit = require("../models/Visit");
 const Medicine = require("../models/Medicine");
 const Patient = require("../models/Patient");
@@ -50,54 +51,104 @@ const addVisit = async (req, res) => {
 // @route   GET /api/visits
 const getVisits = async (req, res) => {
   const { search, patientId, startDate, endDate, page = 1, limit = 20 } = req.query;
-  const skip = (page - 1) * limit;
+  const skip = (parseInt(page) - 1) * parseInt(limit);
 
   try {
-    let query = {};
+    // --- Build the initial $match stage ---
+    const matchStage = {};
 
     if (patientId) {
-      query.patientId = patientId;
-    }
-
-    if (search) {
-      // We search by purpose OR by patient name (requires lookup)
-      const matchingPatients = await Patient.find({
-        name: { $regex: search, $options: "i" }
-      }).select("_id").lean();
-      const patientIds = matchingPatients.map(p => p._id);
-      
-      query.$or = [
-        { purpose: { $regex: search, $options: "i" } },
-        { patientId: { $in: patientIds } }
-      ];
+      matchStage.patientId = new mongoose.Types.ObjectId(patientId);
     }
 
     if (startDate || endDate) {
-      query.visitDate = {};
-      if (startDate) {
-        query.visitDate.$gte = new Date(startDate);
-      }
-      if (endDate) {
-        query.visitDate.$lte = new Date(endDate);
-      }
+      matchStage.visitDate = {};
+      if (startDate) matchStage.visitDate.$gte = new Date(startDate);
+      if (endDate)   matchStage.visitDate.$lte = new Date(endDate);
     }
 
-    const [total, visits] = await Promise.all([
-      Visit.countDocuments(query),
-      Visit.find(query)
-        .sort({ visitDate: -1 })
-        .skip(parseInt(skip))
-        .limit(parseInt(limit))
-        .populate("patientId")
-        .populate("medicines.medicineId")
-        .lean()
+    // Base pipeline shared between count and data queries
+    const basePipeline = [
+      { $match: matchStage },
+      // Join patient so we can filter by name in the same round trip
+      {
+        $lookup: {
+          from: "patients",
+          localField: "patientId",
+          foreignField: "_id",
+          as: "patientId",
+        },
+      },
+      { $unwind: { path: "$patientId", preserveNullAndEmptyArrays: true } },
+    ];
+
+    // If searching, filter by patient name OR visit purpose after the lookup
+    if (search) {
+      const regex = { $regex: search, $options: "i" };
+      basePipeline.push({
+        $match: {
+          $or: [
+            { "patientId.name": regex },
+            { purpose: regex },
+          ],
+        },
+      });
+    }
+
+    // Run count and paginated data in parallel
+    const [countResult, visits] = await Promise.all([
+      Visit.aggregate([...basePipeline, { $count: "total" }]),
+      Visit.aggregate([
+        ...basePipeline,
+        { $sort: { visitDate: -1 } },
+        { $skip: skip },
+        { $limit: parseInt(limit) },
+        // Join medicine details
+        {
+          $lookup: {
+            from: "medicines",
+            localField: "medicines.medicineId",
+            foreignField: "_id",
+            as: "_medicineDetails",
+          },
+        },
+        // Merge medicine detail back into each medicines array element
+        {
+          $addFields: {
+            medicines: {
+              $map: {
+                input: "$medicines",
+                as: "med",
+                in: {
+                  quantity: "$$med.quantity",
+                  medicineId: {
+                    $arrayElemAt: [
+                      {
+                        $filter: {
+                          input: "$_medicineDetails",
+                          as: "detail",
+                          cond: { $eq: ["$$detail._id", "$$med.medicineId"] },
+                        },
+                      },
+                      0,
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+        { $project: { _medicineDetails: 0 } },
+      ]),
     ]);
+
+    const total = countResult.length > 0 ? countResult[0].total : 0;
 
     res.json({
       visits,
       total,
       page: parseInt(page),
-      pages: Math.ceil(total / limit),
+      pages: Math.ceil(total / parseInt(limit)),
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

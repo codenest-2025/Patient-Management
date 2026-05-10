@@ -33,5 +33,6 @@ const patientSchema = new mongoose.Schema(
 
 patientSchema.index({ name: "text" }); // Enable text search for name if needed, or just standard index
 patientSchema.index({ name: 1 });
+patientSchema.index({ updatedAt: -1 }); // Speeds up default sort in getPatients
 
 module.exports = mongoose.model("Patient", patientSchema);

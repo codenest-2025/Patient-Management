@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useContext } from "react";
-import { View, StyleSheet, ScrollView, RefreshControl, Dimensions } from "react-native";
+import React, { useState, useEffect, useCallback, useContext, useRef } from "react";
+import { View, StyleSheet, ScrollView, RefreshControl, Dimensions, Animated } from "react-native";
 import { Text, Card, List, Avatar, Button, IconButton, Surface, Portal, Modal, TextInput, HelperText } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import { AuthContext } from "../../context/AuthContext";
@@ -8,23 +8,46 @@ import api from "../../services/api";
 
 const { width } = Dimensions.get("window");
 
-const SummaryCard = ({ title, value, icon, color }) => (
-  <Surface style={styles.card} elevation={2}>
-    <View style={[styles.cardAccent, { backgroundColor: color }]} />
-    <View style={styles.cardInner}>
-      <View style={styles.cardTextContainer}>
-        <Text variant="labelMedium" style={styles.cardTitle}>{title}</Text>
-        <Text variant="titleLarge" style={[styles.cardValue, { color }]}>{value}</Text>
+// Animated skeleton placeholder shown while data loads
+const SkeletonCard = () => {
+  const opacity = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <Surface style={styles.card} elevation={2}>
+      <Animated.View style={[styles.skeletonCard, { opacity }]} />
+    </Surface>
+  );
+};
+
+const SummaryCard = ({ title, value, icon, color, loading }) => {
+  if (loading) return <SkeletonCard />;
+  return (
+    <Surface style={styles.card} elevation={2}>
+      <View style={[styles.cardAccent, { backgroundColor: color }]} />
+      <View style={styles.cardInner}>
+        <View style={styles.cardTextContainer}>
+          <Text variant="labelMedium" style={styles.cardTitle}>{title}</Text>
+          <Text variant="titleLarge" style={[styles.cardValue, { color }]}>{value}</Text>
+        </View>
+        <Avatar.Icon
+          size={44}
+          icon={icon}
+          backgroundColor={color + "15"}
+          color={color}
+        />
       </View>
-      <Avatar.Icon
-        size={44}
-        icon={icon}
-        backgroundColor={color + "15"}
-        color={color}
-      />
-    </View>
-  </Surface>
-);
+    </Surface>
+  );
+};
 
 export default function DashboardScreen({ navigation }) {
   const [summary, setSummary] = useState(null);
@@ -61,19 +84,25 @@ export default function DashboardScreen({ navigation }) {
 
   useEffect(() => {
     if (socket) {
-      const handler = () => {
-        console.log("Real-time update received on Dashboard");
-        fetchSummary();
+      // Throttle: all 3 events fire together on each visit — collapse into one refresh
+      let refreshTimer = null;
+      const throttledHandler = () => {
+        if (refreshTimer) clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(() => {
+          console.log("Real-time update received on Dashboard (throttled)");
+          fetchSummary();
+        }, 200);
       };
 
-      socket.on("patient_changed", handler);
-      socket.on("stock_changed", handler);
-      socket.on("visit_added", handler);
+      socket.on("patient_changed", throttledHandler);
+      socket.on("stock_changed", throttledHandler);
+      socket.on("visit_added", throttledHandler);
 
       return () => {
-        socket.off("patient_changed", handler);
-        socket.off("stock_changed", handler);
-        socket.off("visit_added", handler);
+        if (refreshTimer) clearTimeout(refreshTimer);
+        socket.off("patient_changed", throttledHandler);
+        socket.off("stock_changed", throttledHandler);
+        socket.off("visit_added", throttledHandler);
       };
     }
   }, [socket]);
@@ -107,13 +136,6 @@ export default function DashboardScreen({ navigation }) {
     fetchSummary();
   }, []);
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <Text variant="bodyLarge">Loading Dashboard...</Text>
-      </View>
-    );
-  }
 
   return (
     <ScrollView
@@ -161,6 +183,7 @@ export default function DashboardScreen({ navigation }) {
               value={summary?.totalPatients || 0}
               icon="account-group"
               color="#2196f3"
+              loading={loading}
             />
           </View>
           <View style={styles.col}>
@@ -169,6 +192,7 @@ export default function DashboardScreen({ navigation }) {
               value={summary?.totalVisits || 0}
               icon="calendar-check"
               color="#4caf50"
+              loading={loading}
             />
           </View>
         </View>
@@ -180,6 +204,7 @@ export default function DashboardScreen({ navigation }) {
               value={`₹${summary?.totalDueAmount || 0}`}
               icon="currency-inr"
               color="#f44336"
+              loading={loading}
             />
           </View>
           <View style={styles.col}>
@@ -188,6 +213,7 @@ export default function DashboardScreen({ navigation }) {
               value={summary?.totalMedicines || 0}
               icon="pill"
               color="#9c27b0"
+              loading={loading}
             />
           </View>
         </View>
@@ -464,6 +490,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#f8f9fa",
+  },
+  skeletonCard: {
+    height: 76,
+    borderRadius: 16,
+    backgroundColor: "#e0e0e0",
   },
   modalContainer: {
     backgroundColor: "white",

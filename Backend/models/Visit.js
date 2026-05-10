@@ -38,5 +38,6 @@ const visitSchema = new mongoose.Schema(
 );
 
 visitSchema.index({ patientId: 1, visitDate: -1 });
+visitSchema.index({ purpose: "text" }); // Enables efficient text/regex search on purpose
 
 module.exports = mongoose.model("Visit", visitSchema);
