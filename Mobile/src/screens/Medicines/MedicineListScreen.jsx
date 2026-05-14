@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import { View, StyleSheet, FlatList, RefreshControl, ActivityIndicator, useWindowDimensions } from "react-native";
 import { Text, List, FAB, Avatar, Divider, IconButton, Portal, Modal, TextInput, Button, Searchbar, Chip, Surface, Dialog } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
@@ -94,6 +95,13 @@ export default function MedicineListScreen({ navigation }) {
     setRefreshing(true);
     fetchMedicines(1, false, debouncedSearch, lowStockOnly);
   }, [debouncedSearch, lowStockOnly]);
+
+  // Fallback: Refresh when screen comes into focus (e.g. after adding medicine and navigating back)
+  useFocusEffect(
+    useCallback(() => {
+      fetchMedicines(1, false, debouncedSearch, lowStockOnly);
+    }, [debouncedSearch, lowStockOnly])
+  );
 
   const handleLoadMore = () => {
     if (!loadingMore && page < totalPages) {
@@ -222,13 +230,6 @@ export default function MedicineListScreen({ navigation }) {
       />
 
       <Portal>
-        <FAB
-          icon="plus"
-          style={styles.fab}
-          color="white"
-          onPress={() => navigation.navigate("AddMedicine")}
-          label={isTablet ? "Add Medicine" : ""}
-        />
         <Modal 
           visible={visible} 
           onDismiss={() => setVisible(false)} 
@@ -318,6 +319,14 @@ export default function MedicineListScreen({ navigation }) {
           </Dialog.Actions>
         </Dialog>
       </Portal>
+
+      <FAB
+        icon="plus"
+        style={styles.fab}
+        color="white"
+        onPress={() => navigation.navigate("AddMedicine")}
+        label={isTablet ? "Add Medicine" : ""}
+      />
     </View>
   );
 }

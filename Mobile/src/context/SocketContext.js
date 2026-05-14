@@ -11,11 +11,18 @@ export const SocketProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    const newSocket = io(SOCKET_URL);
+    const newSocket = io(SOCKET_URL, {
+      transports: ["websocket"],
+      autoConnect: true,
+    });
     setSocket(newSocket);
 
     newSocket.on("connect", () => {
       console.log("Socket connected:", newSocket.id);
+    });
+
+    newSocket.on("connect_error", (err) => {
+      console.log("Socket connection error:", err.message);
     });
 
     return () => newSocket.close();

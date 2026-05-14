@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useContext } from "react";
 import { View, StyleSheet, FlatList, RefreshControl, ActivityIndicator, useWindowDimensions } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { Text, List, Avatar, Divider, Chip, Searchbar, Surface } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import api from "../../services/api";
@@ -82,6 +83,13 @@ export default function VisitHistoryScreen() {
   useEffect(() => {
     fetchVisits(1, false, debouncedSearch, dateFilter);
   }, [debouncedSearch, dateFilter]);
+
+  // Fallback: Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchVisits(1, false, debouncedSearch, dateFilter);
+    }, [debouncedSearch, dateFilter])
+  );
 
   useEffect(() => {
     if (socket) {
