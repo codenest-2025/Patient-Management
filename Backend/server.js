@@ -50,7 +50,7 @@ const pingSelf = () => {
     }).on("error", (err) => {
       console.error("Self-ping failed:", err.message);
     });
-  }, 2 * 60 * 1000); // 2 minutes (Testing)
+  }, 10 * 60 * 1000); // 10 minutes
 };
 
 server.listen(PORT, () => {
