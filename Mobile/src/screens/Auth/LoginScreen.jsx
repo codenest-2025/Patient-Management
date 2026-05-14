@@ -7,8 +7,8 @@ import { AuthContext } from "../../context/AuthContext";
 const { width } = Dimensions.get("window");
 
 export default function LoginScreen() {
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("admin123");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 

@@ -100,5 +100,6 @@ module.exports = {
   addMedicine,
   getMedicines,
   updateStock,
+  updateMedicine,
   deleteMedicine,
 };

@@ -1,30 +1,41 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, StyleSheet } from "react-native";
 import { Text, TextInput, Button, Surface, HelperText } from "react-native-paper";
 import api from "../../services/api";
 
-export default function AddMedicineScreen({ navigation }) {
-  const [name, setName] = useState("");
-  const [stock, setStock] = useState("");
+export default function AddMedicineScreen({ navigation, route }) {
+  const editMed = route.params?.medicine;
+  
+  const [name, setName] = useState(editMed?.name || "");
+  const [stock, setStock] = useState(editMed?.stock?.toString() || "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const handleAddMedicine = async () => {
+  const handleSaveMedicine = async () => {
     if (!name || !stock) {
-      setError("Medicine Name and Initial Stock are required");
+      setError("Medicine Name and Stock are required");
       return;
     }
 
     setLoading(true);
     setError("");
     try {
-      await api.post("/medicines", {
-        name,
-        stock: parseInt(stock),
-      });
+      if (editMed) {
+        // Edit mode
+        await api.put(`/medicines/${editMed._id}`, {
+          name,
+          stock: parseInt(stock),
+        });
+      } else {
+        // Add mode
+        await api.post("/medicines", {
+          name,
+          stock: parseInt(stock),
+        });
+      }
       navigation.goBack();
     } catch (e) {
-      setError(e.response?.data?.message || "Failed to add medicine");
+      setError(e.response?.data?.message || `Failed to ${editMed ? "update" : "add"} medicine`);
     } finally {
       setLoading(false);
     }
@@ -33,7 +44,9 @@ export default function AddMedicineScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <Surface style={styles.surface} elevation={2}>
-        <Text variant="titleLarge" style={styles.title}>New Medicine</Text>
+        <Text variant="titleLarge" style={styles.title}>
+          {editMed ? "Edit Medicine" : "New Medicine"}
+        </Text>
         
         <TextInput
           label="Medicine Name *"
@@ -44,7 +57,7 @@ export default function AddMedicineScreen({ navigation }) {
         />
 
         <TextInput
-          label="Initial Stock *"
+          label="Stock *"
           value={stock}
           onChangeText={setStock}
           mode="outlined"
@@ -56,12 +69,12 @@ export default function AddMedicineScreen({ navigation }) {
 
         <Button
           mode="contained"
-          onPress={handleAddMedicine}
+          onPress={handleSaveMedicine}
           loading={loading}
           disabled={loading}
           style={styles.button}
         >
-          Add to Inventory
+          {editMed ? "Update Medicine" : "Add to Inventory"}
         </Button>
       </Surface>
     </View>

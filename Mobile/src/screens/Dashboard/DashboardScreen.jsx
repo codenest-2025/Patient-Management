@@ -247,7 +247,7 @@ export default function DashboardScreen({ navigation }) {
       ) : (
         <Surface style={styles.emptyCard} elevation={1}>
           <Avatar.Icon icon="check-circle" size={48} color="#4caf50" backgroundColor="#e8f5e9" />
-          <Text variant="bodyLarge" style={styles.emptyText}>All stocks are sufficient</Text>
+          <Text variant="bodyLarge" style={styles.emptyText}>Stocks are sufficient</Text>
         </Surface>
       )}
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useContext } from "react";
 import { View, StyleSheet, FlatList, RefreshControl, ActivityIndicator, useWindowDimensions } from "react-native";
-import { Text, List, FAB, Avatar, Divider, IconButton, Portal, Modal, TextInput, Button, Searchbar, Chip, Surface } from "react-native-paper";
+import { Text, List, FAB, Avatar, Divider, IconButton, Portal, Modal, TextInput, Button, Searchbar, Chip, Surface, Dialog } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import api from "../../services/api";
 import { AuthContext } from "../../context/AuthContext";
@@ -34,6 +34,11 @@ export default function MedicineListScreen({ navigation }) {
   const [selectedMed, setSelectedMed] = useState(null);
   const [stockAmount, setStockAmount] = useState("");
   const [updating, setUpdating] = useState(false);
+  
+  // Delete Confirmation State
+  const [deleteVisible, setDeleteVisible] = useState(false);
+  const [medToDelete, setMedToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchMedicines = async (pageNum = 1, shouldAppend = false, search = searchQuery, lowStock = lowStockOnly) => {
     try {
@@ -123,6 +128,30 @@ export default function MedicineListScreen({ navigation }) {
     setVisible(true);
   };
 
+  const showDeleteDialog = (med) => {
+    setMedToDelete(med);
+    setDeleteVisible(true);
+  };
+
+  const hideDeleteDialog = () => {
+    setDeleteVisible(false);
+    setMedToDelete(null);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!medToDelete) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/medicines/${medToDelete._id}`);
+      hideDeleteDialog();
+      fetchMedicines(1, false, searchQuery, lowStockOnly);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const renderMedicineItem = ({ item }) => (
     <Surface style={[styles.card, isTablet && styles.tabletCard]} elevation={1}>
       <List.Item
@@ -138,9 +167,12 @@ export default function MedicineListScreen({ navigation }) {
           />
         )}
         right={(props) => (
-          <View style={styles.rightActions}>
-            <IconButton icon="plus-box" iconColor="#004d40" onPress={() => openStockModal(item)} />
-          </View>
+          <IconButton 
+            {...props}
+            icon="plus-box" 
+            iconColor="#004d40" 
+            onPress={() => openStockModal(item)} 
+          />
         )}
       />
     </Surface>
@@ -189,15 +221,14 @@ export default function MedicineListScreen({ navigation }) {
         }
       />
 
-      <FAB
-        icon="plus"
-        style={styles.fab}
-        color="white"
-        onPress={() => navigation.navigate("AddMedicine")}
-        label={isTablet ? "Add Medicine" : ""}
-      />
-
       <Portal>
+        <FAB
+          icon="plus"
+          style={styles.fab}
+          color="white"
+          onPress={() => navigation.navigate("AddMedicine")}
+          label={isTablet ? "Add Medicine" : ""}
+        />
         <Modal 
           visible={visible} 
           onDismiss={() => setVisible(false)} 
@@ -233,7 +264,59 @@ export default function MedicineListScreen({ navigation }) {
               </Button>
             )}
           </View>
+
+          {!isStaff && (
+            <>
+              <Divider style={{ marginVertical: 20 }} />
+              <View style={styles.secondaryActions}>
+                <Button 
+                  mode="outlined" 
+                  icon="pencil"
+                  onPress={() => {
+                    setVisible(false);
+                    navigation.navigate("AddMedicine", { medicine: selectedMed });
+                  }}
+                  style={[styles.secondaryButton, { borderColor: "#004d40" }]}
+                  textColor="#004d40"
+                >
+                  Edit Name
+                </Button>
+                <Button 
+                  mode="outlined" 
+                  icon="delete"
+                  onPress={() => {
+                    setVisible(false);
+                    showDeleteDialog(selectedMed);
+                  }}
+                  style={[styles.secondaryButton, { borderColor: "#f44336" }]}
+                  textColor="#f44336"
+                >
+                  Delete
+                </Button>
+              </View>
+            </>
+          )}
         </Modal>
+
+        <Dialog visible={deleteVisible} onDismiss={hideDeleteDialog} style={styles.deleteDialog}>
+          <Dialog.Title style={styles.deleteTitle}>Confirm Delete</Dialog.Title>
+          <Dialog.Content>
+            <Text variant="bodyMedium">
+              Are you sure you want to delete <Text style={{ fontWeight: "bold" }}>{medToDelete?.name}</Text>? This action cannot be undone.
+            </Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={hideDeleteDialog} textColor="#757575">Cancel</Button>
+            <Button 
+              onPress={handleDeleteConfirm} 
+              loading={deleting} 
+              disabled={deleting}
+              textColor="#f44336"
+            >
+              Delete
+            </Button>
+          </Dialog.Actions>
+        </Dialog>
       </Portal>
     </View>
   );
@@ -334,5 +417,21 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     height: 48,
     justifyContent: "center",
+  },
+  secondaryActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  secondaryButton: {
+    flex: 0.48,
+    borderRadius: 10,
+  },
+  deleteDialog: {
+    borderRadius: 20,
+    backgroundColor: "white",
+  },
+  deleteTitle: {
+    color: "#f44336",
+    fontWeight: "bold",
   },
 });
