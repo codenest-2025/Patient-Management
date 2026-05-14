@@ -72,15 +72,15 @@ export default function MedicineListScreen({ navigation }) {
     }
   };
 
-  useEffect(() => {
-    fetchMedicines(1, false, searchQuery, lowStockOnly);
-  }, [lowStockOnly]);
+  // Refresh when screen comes into focus OR when filters change
+  // Note: useFocusEffect handles the initial mount as well.
+  useFocusEffect(
+    useCallback(() => {
+      fetchMedicines(1, false, debouncedSearch, lowStockOnly);
+    }, [debouncedSearch, lowStockOnly])
+  );
 
-  // Fire fetch when debounced search value changes (300ms after user stops typing)
-  useEffect(() => {
-    fetchMedicines(1, false, debouncedSearch, lowStockOnly);
-  }, [debouncedSearch, lowStockOnly]);
-
+  // Socket listener for real-time updates
   useEffect(() => {
     if (socket) {
       const handler = () => {
@@ -95,13 +95,6 @@ export default function MedicineListScreen({ navigation }) {
     setRefreshing(true);
     fetchMedicines(1, false, debouncedSearch, lowStockOnly);
   }, [debouncedSearch, lowStockOnly]);
-
-  // Fallback: Refresh when screen comes into focus (e.g. after adding medicine and navigating back)
-  useFocusEffect(
-    useCallback(() => {
-      fetchMedicines(1, false, debouncedSearch, lowStockOnly);
-    }, [debouncedSearch, lowStockOnly])
-  );
 
   const handleLoadMore = () => {
     if (!loadingMore && page < totalPages) {

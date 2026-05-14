@@ -26,6 +26,7 @@ export default function VisitHistoryScreen() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Fetch visits
   const fetchVisits = async (pageNum = 1, shouldAppend = false, search = searchQuery, filter = dateFilter) => {
     try {
       if (pageNum === 1) setLoading(true);
@@ -72,6 +73,7 @@ export default function VisitHistoryScreen() {
       setPage(data.page || 1);
     } catch (e) {
       console.error("Fetch Visits Error:", e);
+      // Optional: Add a user-friendly alert
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -79,18 +81,15 @@ export default function VisitHistoryScreen() {
     }
   };
 
-  // Fire fetch when debounced search value or date filter changes
-  useEffect(() => {
-    fetchVisits(1, false, debouncedSearch, dateFilter);
-  }, [debouncedSearch, dateFilter]);
-
-  // Fallback: Refresh when screen comes into focus
+  // Refresh when screen comes into focus OR when filters change
+  // Note: useFocusEffect handles the initial mount as well.
   useFocusEffect(
     useCallback(() => {
       fetchVisits(1, false, debouncedSearch, dateFilter);
     }, [debouncedSearch, dateFilter])
   );
 
+  // Socket listener for real-time updates
   useEffect(() => {
     if (socket) {
       const handler = () => {

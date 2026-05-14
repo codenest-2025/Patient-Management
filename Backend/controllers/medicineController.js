@@ -59,17 +59,20 @@ const updateStock = async (req, res) => {
       return res.status(403).json({ message: "Staff are not allowed to remove stock" });
     }
 
-    const medicine = await Medicine.findByIdAndUpdate(
-      req.params.id,
-      { $inc: { stock: amount } },
-      { new: true }
-    );
-    if (medicine) {
-      getIO().emit("stock_changed");
-      res.json(medicine);
-    } else {
-      res.status(404).json({ message: "Medicine not found" });
+    const medicine = await Medicine.findById(req.params.id);
+    if (!medicine) {
+      return res.status(404).json({ message: "Medicine not found" });
     }
+
+    if (medicine.stock + amount < 0) {
+      return res.status(400).json({ message: `Insufficient stock. Current: ${medicine.stock}` });
+    }
+
+    medicine.stock += amount;
+    await medicine.save();
+
+    getIO().emit("stock_changed");
+    res.json(medicine);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
