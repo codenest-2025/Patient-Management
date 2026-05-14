@@ -14,7 +14,7 @@ const getSummary = async (req, res) => {
         { $match: { totalDue: { $gt: 0 } } },
         { $group: { _id: null, total: { $sum: "$totalDue" } } }
       ]),
-      Medicine.find({ stock: { $lt: 10 } }).sort({ stock: 1 }).limit(20).lean() // sorted: most critical first
+      Medicine.find({ stock: { $lte: 2 } }).sort({ stock: 1 }).limit(20).lean() // sorted: most critical first
     ]);
 
     const totalDueAmount = dueAggregation.length > 0 ? dueAggregation[0].total : 0;

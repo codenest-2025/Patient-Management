@@ -163,8 +163,8 @@ export default function MedicineListScreen({ navigation }) {
           <Avatar.Icon
             {...props}
             icon="pill"
-            backgroundColor={item.stock < 10 ? "#ff980015" : "#004d4015"}
-            color={item.stock < 10 ? "#ff9800" : "#004d40"}
+            backgroundColor={item.stock <= 2 ? "#ff980015" : "#004d4015"}
+            color={item.stock <= 2 ? "#ff9800" : "#004d40"}
           />
         )}
         right={(props) => (
@@ -198,7 +198,7 @@ export default function MedicineListScreen({ navigation }) {
               textStyle={{ color: lowStockOnly ? "white" : "#004d40" }}
               icon={lowStockOnly ? "check" : "alert-outline"}
             >
-              {"Low Stock (<10)"}
+              {"Low Stock (<=2)"}
             </Chip>
           </View>
         </View>

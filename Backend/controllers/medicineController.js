@@ -26,7 +26,7 @@ const getMedicines = async (req, res) => {
   }
 
   if (lowStock === "true") {
-    query.stock = { $lt: 10 };
+    query.stock = { $lte: 2 };
   }
 
   try {
