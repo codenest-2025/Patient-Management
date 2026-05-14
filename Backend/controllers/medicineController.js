@@ -96,6 +96,31 @@ const deleteMedicine = async (req, res) => {
   }
 };
 
+// @desc    Update medicine details
+// @route   PUT /api/medicines/:id
+const updateMedicine = async (req, res) => {
+  try {
+    if (req.user.role === "staff") {
+      return res.status(403).json({ message: "Staff are not allowed to update medicines" });
+    }
+
+    const medicine = await Medicine.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (medicine) {
+      getIO().emit("stock_changed");
+      res.json(medicine);
+    } else {
+      res.status(404).json({ message: "Medicine not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   addMedicine,
   getMedicines,
