@@ -110,6 +110,38 @@ export default function PatientDetailScreen({ route, navigation }) {
     );
   };
 
+  const handleDeletePatient = () => {
+    if (visits && visits.length > 0) {
+      Alert.alert(
+        "Cannot Delete",
+        "This patient has existing visit history and cannot be deleted. You must delete all visit history first."
+      );
+      return;
+    }
+
+    Alert.alert(
+      "Confirm Delete",
+      "Are you sure you want to delete this patient record? This action is permanent and cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.delete(`/patients/${patientId}`);
+              Alert.alert("Success", "Patient deleted successfully");
+              navigation.goBack();
+            } catch (e) {
+              console.error(e);
+              Alert.alert("Error", e.response?.data?.message || "Failed to delete patient");
+            }
+          }
+        }
+      ]
+    );
+  };
+
   // Show a non-blocking spinner until the first load completes
   if (loading && !patient) {
     return (
@@ -137,14 +169,27 @@ export default function PatientDetailScreen({ route, navigation }) {
             />
             <View style={styles.headerText}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <Text variant="headlineSmall" style={styles.patientName}>{patient.name}</Text>
-                <IconButton 
-                  icon="pencil-outline" 
-                  iconColor="white" 
-                  size={20} 
-                  onPress={() => navigation.navigate("EditPatient", { patientId })}
-                  containerColor="rgba(255,255,255,0.15)"
-                />
+                <Text variant="headlineSmall" style={[styles.patientName, { flex: 1 }]} numberOfLines={1}>{patient.name}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center" }}>
+                  <IconButton 
+                    icon="pencil-outline" 
+                    iconColor="white" 
+                    size={20} 
+                    onPress={() => navigation.navigate("EditPatient", { patientId })}
+                    containerColor="rgba(255,255,255,0.15)"
+                    style={{ marginRight: 5, margin: 0 }}
+                  />
+                  {userInfo?.role === "admin" && (
+                    <IconButton 
+                      icon="delete-outline" 
+                      iconColor="#ffcdd2" 
+                      size={20} 
+                      onPress={handleDeletePatient}
+                      containerColor="rgba(244,67,54,0.3)"
+                      style={{ margin: 0 }}
+                    />
+                  )}
+                </View>
               </View>
               <View style={styles.contactRow}>
                 <IconButton icon="phone" size={16} iconColor="rgba(255,255,255,0.7)" />

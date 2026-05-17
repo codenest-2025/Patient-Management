@@ -1,4 +1,5 @@
 const Patient = require("../models/Patient");
+const Visit = require("../models/Visit");
 const { getIO } = require("../config/socket");
 
 // @desc    Add new patient
@@ -93,13 +94,19 @@ const updatePatient = async (req, res) => {
 const deletePatient = async (req, res) => {
   try {
     const patient = await Patient.findById(req.params.id);
-    if (patient) {
-      await patient.deleteOne();
-      getIO().emit("patient_changed");
-      res.json({ message: "Patient removed" });
-    } else {
-      res.status(404).json({ message: "Patient not found" });
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
     }
+
+    // Check if there are any visits associated with this patient
+    const visitCount = await Visit.countDocuments({ patientId: req.params.id });
+    if (visitCount > 0) {
+      return res.status(400).json({ message: "Cannot delete patient who has visit history" });
+    }
+
+    await patient.deleteOne();
+    getIO().emit("patient_changed");
+    res.json({ message: "Patient removed successfully" });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
