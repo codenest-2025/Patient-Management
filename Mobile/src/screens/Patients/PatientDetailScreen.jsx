@@ -193,7 +193,7 @@ export default function PatientDetailScreen({ route, navigation }) {
               </View>
               <View style={styles.contactRow}>
                 <IconButton icon="phone" size={16} iconColor="rgba(255,255,255,0.7)" />
-                <Text style={styles.headerSubtext}>{patient.mobile1}</Text>
+                <Text style={styles.headerSubtext}>{patient.mobile1 || "No mobile number"}</Text>
               </View>
               <View style={styles.contactRow}>
                 <IconButton icon="map-marker" size={16} iconColor="rgba(255,255,255,0.7)" />

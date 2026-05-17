@@ -51,13 +51,13 @@ export default function EditPatientScreen({ route, navigation }) {
   }, [socket, patientId, saving]);
 
   const handleUpdatePatient = async () => {
-    if (!name || !mobile1) {
-      setError("Name and Mobile Number are required");
+    if (!name) {
+      setError("Patient Name is required");
       return;
     }
 
     const mobileRegex = /^[0-9]{10}$/;
-    if (!mobileRegex.test(mobile1)) {
+    if (mobile1 && !mobileRegex.test(mobile1)) {
       setError("Primary Mobile Number must be exactly 10 digits");
       return;
     }
@@ -107,7 +107,7 @@ export default function EditPatientScreen({ route, navigation }) {
         />
 
         <TextInput
-          label="Mobile Number *"
+          label="Mobile Number (Optional)"
           value={mobile1}
           onChangeText={(text) => setMobile1(text.replace(/[^0-9]/g, ""))}
           mode="outlined"

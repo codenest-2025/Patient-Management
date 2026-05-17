@@ -60,8 +60,13 @@ export default function EditVisitScreen({ route, navigation }) {
   }, [visitId, patientId]);
 
   const addMedicine = (med) => {
-    const exists = selectedMedicines.find(m => m.medicineId === med._id);
-    if (exists) return;
+    const exists = selectedMedicines.find(
+      m => m.medicineId === med._id || m.name.toLowerCase() === med.name.toLowerCase()
+    );
+    if (exists) {
+      Alert.alert("Already Selected", `${med.name} is already added to this visit list.`);
+      return;
+    }
     
     setSelectedMedicines([...selectedMedicines, { 
       medicineId: med._id, 

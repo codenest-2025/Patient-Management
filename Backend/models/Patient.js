@@ -9,7 +9,6 @@ const patientSchema = new mongoose.Schema(
 
     mobile1: {
       type: String,
-      required: true,
     },
 
     mobile2: {

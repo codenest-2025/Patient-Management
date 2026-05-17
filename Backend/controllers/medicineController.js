@@ -5,6 +5,19 @@ const { getIO } = require("../config/socket");
 // @route   POST /api/medicines
 const addMedicine = async (req, res) => {
   try {
+    const normalizedName = req.body.name?.trim();
+    if (!normalizedName) {
+      return res.status(400).json({ message: "Medicine name is required" });
+    }
+
+    const duplicate = await Medicine.findOne({
+      name: { $regex: new RegExp(`^${normalizedName}$`, "i") }
+    });
+
+    if (duplicate) {
+      return res.status(400).json({ message: "A medicine with this name already exists" });
+    }
+
     const medicine = await Medicine.create(req.body);
     getIO().emit("stock_changed");
     res.status(201).json(medicine);
@@ -105,6 +118,17 @@ const updateMedicine = async (req, res) => {
   try {
     if (req.user.role === "staff") {
       return res.status(403).json({ message: "Staff are not allowed to update medicines" });
+    }
+
+    const normalizedName = req.body.name?.trim();
+    if (normalizedName) {
+      const duplicate = await Medicine.findOne({
+        _id: { $ne: req.params.id },
+        name: { $regex: new RegExp(`^${normalizedName}$`, "i") }
+      });
+      if (duplicate) {
+        return res.status(400).json({ message: "A medicine with this name already exists" });
+      }
     }
 
     const medicine = await Medicine.findByIdAndUpdate(

@@ -96,7 +96,7 @@ export default function PatientListScreen({ navigation }) {
       <List.Item
         title={item.name}
         titleStyle={styles.patientName}
-        description={`${item.mobile1}${item.address ? " | " + item.address : ""}`}
+        description={`${item.mobile1 || "No mobile"}${item.address ? " | " + item.address : ""}`}
         descriptionStyle={styles.patientDescription}
         left={(props) => (
           <Avatar.Text

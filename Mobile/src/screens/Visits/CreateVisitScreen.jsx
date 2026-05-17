@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { Text, Card, TextInput, Button, IconButton, List, Divider, Surface, HelperText, Portal, Modal, Searchbar } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import api from "../../services/api";
@@ -42,8 +42,13 @@ export default function CreateVisitScreen({ route, navigation }) {
   }, [patientId]);
 
   const addMedicine = (med) => {
-    const exists = selectedMedicines.find(m => m.medicineId === med._id);
-    if (exists) return;
+    const exists = selectedMedicines.find(
+      m => m.medicineId === med._id || m.name.toLowerCase() === med.name.toLowerCase()
+    );
+    if (exists) {
+      Alert.alert("Already Selected", `${med.name} is already added to this visit list.`);
+      return;
+    }
     
     setSelectedMedicines([...selectedMedicines, { 
       medicineId: med._id, 
@@ -104,7 +109,7 @@ export default function CreateVisitScreen({ route, navigation }) {
     <ScrollView style={styles.container}>
       <Surface style={styles.header} elevation={1}>
         <Text variant="titleLarge" style={styles.patientName}>Visit for: {patient.name}</Text>
-        <Text style={styles.patientMobile}>{patient.mobile1}</Text>
+        <Text style={styles.patientMobile}>{patient.mobile1 || "No mobile number"}</Text>
       </Surface>
 
       <Card style={styles.sectionCard}>
