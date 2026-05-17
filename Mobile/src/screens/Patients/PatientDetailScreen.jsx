@@ -54,6 +54,14 @@ export default function PatientDetailScreen({ route, navigation }) {
   }, [patientId]);
 
   useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      console.log("Patient Detail Screen focused, refreshing data...");
+      fetchPatientData();
+    });
+    return unsubscribe;
+  }, [navigation, patientId]);
+
+  useEffect(() => {
     if (socket) {
       const handler = () => {
         if (isDeleting.current) return;
