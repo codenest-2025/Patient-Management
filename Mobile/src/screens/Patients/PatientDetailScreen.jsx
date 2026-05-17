@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useContext } from "react";
-import { View, StyleSheet, ScrollView, RefreshControl, FlatList, ActivityIndicator } from "react-native";
+import { View, StyleSheet, ScrollView, RefreshControl, FlatList, ActivityIndicator, Alert } from "react-native";
 import { Text, Card, List, Button, Avatar, Divider, Portal, Modal, TextInput, HelperText, Surface, IconButton } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import api from "../../services/api";
@@ -84,6 +84,30 @@ export default function PatientDetailScreen({ route, navigation }) {
     } finally {
       setPaying(false);
     }
+  };
+
+  const handleDeleteVisit = (visitId) => {
+    Alert.alert(
+      "Confirm Delete",
+      "Are you sure you want to delete this visit history? This will automatically restore medicine stocks and adjust the patient's outstanding balance.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await api.delete(`/visits/${visitId}`);
+              Alert.alert("Success", "Visit deleted successfully");
+              fetchPatientData();
+            } catch (e) {
+              console.error(e);
+              Alert.alert("Error", e.response?.data?.message || "Failed to delete visit");
+            }
+          }
+        }
+      ]
+    );
   };
 
   // Show a non-blocking spinner until the first load completes
@@ -180,12 +204,22 @@ export default function PatientDetailScreen({ route, navigation }) {
                     <View style={{ flexDirection: "row", alignItems: "center" }}>
                       <Text variant="labelSmall" style={styles.purposeText}>{visit.purpose || "Regular Visit"}</Text>
                       {userInfo?.role === "admin" && (
-                        <IconButton 
-                          icon="pencil" 
-                          size={18} 
-                          onPress={() => navigation.navigate("EditVisit", { visitId: visit._id, patientId })} 
-                          iconColor="#004d40"
-                        />
+                        <>
+                          <IconButton 
+                            icon="pencil" 
+                            size={18} 
+                            onPress={() => navigation.navigate("EditVisit", { visitId: visit._id, patientId })} 
+                            iconColor="#004d40"
+                            style={{ margin: 0 }}
+                          />
+                          <IconButton 
+                            icon="delete" 
+                            size={18} 
+                            onPress={() => handleDeleteVisit(visit._id)} 
+                            iconColor="#f44336"
+                            style={{ margin: 0 }}
+                          />
+                        </>
                       )}
                     </View>
                   </View>

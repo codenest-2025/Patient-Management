@@ -113,6 +113,33 @@ export default function EditVisitScreen({ route, navigation }) {
     }
   };
 
+  const handleDeleteVisit = () => {
+    Alert.alert(
+      "Confirm Delete",
+      "Are you sure you want to delete this visit history? This will automatically restore medicine stocks and adjust the patient's outstanding balance.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setSaving(true);
+            try {
+              await api.delete(`/visits/${visitId}`);
+              Alert.alert("Success", "Visit deleted successfully");
+              navigation.goBack();
+            } catch (e) {
+              console.error(e);
+              Alert.alert("Error", e.response?.data?.message || "Failed to delete visit");
+            } finally {
+              setSaving(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const dueAmount = (parseFloat(payableAmount || 0) - parseFloat(paidAmount || 0)).toFixed(2);
 
   if (loading || !patient) return null;
@@ -247,6 +274,18 @@ export default function EditVisitScreen({ route, navigation }) {
           >
             Update Visit & Adjust Stock
           </Button>
+
+          <Button
+            mode="outlined"
+            onPress={handleDeleteVisit}
+            loading={saving}
+            disabled={saving}
+            textColor="#f44336"
+            style={styles.deleteButton}
+            icon="delete"
+          >
+            Delete Visit Record
+          </Button>
         </Card.Content>
       </Card>
       
@@ -374,5 +413,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingVertical: 5,
     backgroundColor: "#004d40",
+  },
+  deleteButton: {
+    marginTop: 15,
+    paddingVertical: 5,
+    borderColor: "#f44336",
+    borderWidth: 1,
   },
 });

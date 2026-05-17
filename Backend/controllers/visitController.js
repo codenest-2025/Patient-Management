@@ -264,9 +264,57 @@ const getVisitById = async (req, res) => {
   }
 };
 
+// @desc    Delete visit (Admin only)
+// @route   DELETE /api/visits/:id
+const deleteVisit = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const visit = await Visit.findById(req.params.id).session(session);
+
+    if (!visit) {
+      return res.status(404).json({ message: "Visit not found" });
+    }
+
+    // 1. Revert old stock changes
+    for (const item of visit.medicines) {
+      await Medicine.findByIdAndUpdate(
+        item.medicineId,
+        { $inc: { stock: item.quantity } },
+        { session }
+      );
+    }
+
+    // 2. Revert old patient due
+    await Patient.findByIdAndUpdate(
+      visit.patientId,
+      { $inc: { totalDue: -visit.dueAmount } },
+      { session }
+    );
+
+    // 3. Delete visit
+    await Visit.findByIdAndDelete(req.params.id).session(session);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    getIO().emit("visit_added");
+    getIO().emit("patient_changed");
+    getIO().emit("stock_changed");
+
+    res.json({ message: "Visit history deleted and stock/dues auto adjusted" });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    res.status(400).json({ message: error.message });
+  }
+};
+
 module.exports = {
   addVisit,
   getVisits,
   updateVisit,
   getVisitById,
+  deleteVisit,
 };
+
