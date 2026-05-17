@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { Text, Card, TextInput, Button, IconButton, List, Divider, Surface, HelperText, Portal, Modal, Searchbar } from "react-native-paper";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 import api from "../../services/api";
+import { SocketContext } from "../../context/SocketContext";
 
 export default function CreateVisitScreen({ route, navigation }) {
   const { patientId } = route.params;
+  const socket = useContext(SocketContext);
   const [patient, setPatient] = useState(null);
   const [allMedicines, setAllMedicines] = useState([]);
   const [selectedMedicines, setSelectedMedicines] = useState([]);
@@ -25,27 +27,54 @@ export default function CreateVisitScreen({ route, navigation }) {
     m.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const fetchPatientAndMedicines = async () => {
+    try {
+      const [pRes, mRes] = await Promise.all([
+        api.get(`/patients/${patientId}`),
+        api.get("/medicines")
+      ]);
+      setPatient(pRes.data);
+      setAllMedicines(mRes.data.medicines || []);
+    } catch (e) {
+      console.error(e);
+      const errMsg = e.response?.status === 404 ? "This patient record has been deleted." : "Failed to load visit details.";
+      Alert.alert(
+        "Error",
+        errMsg,
+        [{ text: "OK", onPress: () => navigation.goBack() }]
+      );
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [pRes, mRes] = await Promise.all([
-          api.get(`/patients/${patientId}`),
-          api.get("/medicines")
-        ]);
-        setPatient(pRes.data);
-        setAllMedicines(mRes.data.medicines || []);
-      } catch (e) {
-        console.error(e);
-        const errMsg = e.response?.status === 404 ? "This patient record has been deleted." : "Failed to load visit details.";
-        Alert.alert(
-          "Error",
-          errMsg,
-          [{ text: "OK", onPress: () => navigation.goBack() }]
-        );
-      }
-    };
-    fetchData();
+    fetchPatientAndMedicines();
   }, [patientId]);
+
+  useEffect(() => {
+    if (socket) {
+      const handleStockChange = () => {
+        if (navigation.isFocused()) {
+          console.log("Real-time stock update received on Create Visit Screen");
+          fetchPatientAndMedicines();
+        }
+      };
+
+      const handlePatientChange = () => {
+        if (navigation.isFocused()) {
+          console.log("Real-time patient update received on Create Visit Screen");
+          fetchPatientAndMedicines();
+        }
+      };
+
+      socket.on("stock_changed", handleStockChange);
+      socket.on("patient_changed", handlePatientChange);
+
+      return () => {
+        socket.off("stock_changed", handleStockChange);
+        socket.off("patient_changed", handlePatientChange);
+      };
+    }
+  }, [socket, patientId, navigation]);
 
   const addMedicine = (med) => {
     const exists = selectedMedicines.find(

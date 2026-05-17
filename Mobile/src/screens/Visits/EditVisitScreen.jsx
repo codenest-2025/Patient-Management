@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useContext } from "react";
 import { View, StyleSheet, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { Text, Card, TextInput, Button, IconButton, List, Divider, Surface, HelperText, Portal, Modal, Searchbar } from "react-native-paper";
 import api from "../../services/api";
+import { SocketContext } from "../../context/SocketContext";
 
 export default function EditVisitScreen({ route, navigation }) {
   const { visitId, patientId } = route.params;
+  const socket = useContext(SocketContext);
   const [patient, setPatient] = useState(null);
   const [allMedicines, setAllMedicines] = useState([]);
   const [selectedMedicines, setSelectedMedicines] = useState([]);
@@ -25,44 +27,71 @@ export default function EditVisitScreen({ route, navigation }) {
     m.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [pRes, mRes, vRes] = await Promise.all([
-          api.get(`/patients/${patientId}`),
-          api.get("/medicines"),
-          api.get(`/visits/${visitId}`)
-        ]);
-        
-        setPatient(pRes.data);
-        setAllMedicines(mRes.data.medicines || []);
-        
-        const currentVisit = vRes.data;
-        if (currentVisit) {
-          setPayableAmount(currentVisit.payableAmount.toString());
-          setPaidAmount(currentVisit.paidAmount.toString());
-          setPurpose(currentVisit.purpose || "");
-          setSelectedMedicines(currentVisit.medicines.map(m => ({
-            medicineId: m.medicineId._id || m.medicineId,
-            name: m.medicineId.name || "Unknown",
-            quantity: m.quantity,
-            stock: 999 
-          })));
-        }
-      } catch (e) {
-        console.error(e);
-        const errMsg = e.response?.status === 404 ? "This patient or visit record has been deleted." : "Failed to load visit details.";
-        Alert.alert(
-          "Error",
-          errMsg,
-          [{ text: "OK", onPress: () => navigation.goBack() }]
-        );
-      } finally {
-        setLoading(false);
+  const fetchVisitData = async () => {
+    try {
+      const [pRes, mRes, vRes] = await Promise.all([
+        api.get(`/patients/${patientId}`),
+        api.get("/medicines"),
+        api.get(`/visits/${visitId}`)
+      ]);
+      
+      setPatient(pRes.data);
+      setAllMedicines(mRes.data.medicines || []);
+      
+      const currentVisit = vRes.data;
+      if (currentVisit) {
+        setPayableAmount(currentVisit.payableAmount.toString());
+        setPaidAmount(currentVisit.paidAmount.toString());
+        setPurpose(currentVisit.purpose || "");
+        setSelectedMedicines(currentVisit.medicines.map(m => ({
+          medicineId: m.medicineId._id || m.medicineId,
+          name: m.medicineId.name || "Unknown",
+          quantity: m.quantity,
+          stock: 999 
+        })));
       }
-    };
-    fetchData();
+    } catch (e) {
+      console.error(e);
+      const errMsg = e.response?.status === 404 ? "This patient or visit record has been deleted." : "Failed to load visit details.";
+      Alert.alert(
+        "Error",
+        errMsg,
+        [{ text: "OK", onPress: () => navigation.goBack() }]
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchVisitData();
   }, [visitId, patientId]);
+
+  useEffect(() => {
+    if (socket) {
+      const handleStockChange = () => {
+        if (!saving && navigation.isFocused()) {
+          console.log("Real-time stock update received on Edit Visit Screen");
+          fetchVisitData();
+        }
+      };
+
+      const handleVisitChange = () => {
+        if (!saving && navigation.isFocused()) {
+          console.log("Real-time visit change received on Edit Visit Screen");
+          fetchVisitData();
+        }
+      };
+
+      socket.on("stock_changed", handleStockChange);
+      socket.on("visit_added", handleVisitChange);
+
+      return () => {
+        socket.off("stock_changed", handleStockChange);
+        socket.off("visit_added", handleVisitChange);
+      };
+    }
+  }, [socket, visitId, patientId, saving, navigation]);
 
   const addMedicine = (med) => {
     const exists = selectedMedicines.find(

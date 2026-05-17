@@ -1,12 +1,14 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useContext } from "react";
 import { View, StyleSheet, FlatList, RefreshControl, Alert, useWindowDimensions, ActivityIndicator } from "react-native";
 import { Text, List, Avatar, IconButton, Surface, Switch, Portal, Modal, TextInput, Button, Divider, Chip, Searchbar } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
 import api from "../../services/api";
+import { SocketContext } from "../../context/SocketContext";
 
 export default function ManageUsersScreen() {
   const { width } = useWindowDimensions();
   const isTablet = width > 600;
+  const socket = useContext(SocketContext);
   
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +65,21 @@ export default function ManageUsersScreen() {
   useEffect(() => {
     fetchUsers(1, false, searchQuery, roleFilter);
   }, [roleFilter]);
+
+  useEffect(() => {
+    if (socket) {
+      const handleUserChange = () => {
+        console.log("Real-time staff user update received");
+        fetchUsers(1, false, searchQuery, roleFilter);
+      };
+
+      socket.on("user_changed", handleUserChange);
+
+      return () => {
+        socket.off("user_changed", handleUserChange);
+      };
+    }
+  }, [socket, searchQuery, roleFilter]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

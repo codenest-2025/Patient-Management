@@ -1,5 +1,6 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { getIO } = require("../config/socket");
 
 // @desc    Auth user & get token
 // @route   POST /api/auth/login
@@ -47,6 +48,7 @@ const registerUser = async (req, res) => {
     });
 
     if (user) {
+      getIO().emit("user_changed");
       res.status(201).json({
         _id: user._id,
         username: user.username,
@@ -124,6 +126,7 @@ const updateUser = async (req, res) => {
         user.password = req.body.password;
       }
       const updatedUser = await user.save();
+      getIO().emit("user_changed");
       res.json({
         _id: updatedUser._id,
         username: updatedUser.username,
@@ -149,6 +152,7 @@ const deleteUser = async (req, res) => {
     const user = await User.findById(req.params.id);
     if (user) {
       await user.deleteOne();
+      getIO().emit("user_changed");
       res.json({ message: "User removed" });
     } else {
       res.status(404).json({ message: "User not found" });

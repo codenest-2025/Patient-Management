@@ -30,6 +30,7 @@ const clearDue = async (req, res) => {
     });
 
     getIO().emit("patient_changed");
+    getIO().emit("visit_added");
 
     res.json({
       message: "Payment recorded successfully",
