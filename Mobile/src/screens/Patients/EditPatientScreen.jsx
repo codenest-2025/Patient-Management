@@ -24,6 +24,13 @@ export default function EditPatientScreen({ route, navigation }) {
       setAddress(data.address || "");
     } catch (e) {
       console.error(e);
+      if (e.response?.status === 404) {
+        Alert.alert(
+          "Patient Deleted",
+          "This patient record has been deleted.",
+          [{ text: "OK", onPress: () => navigation.goBack() }]
+        );
+      }
     } finally {
       setLoading(false);
     }
@@ -36,7 +43,7 @@ export default function EditPatientScreen({ route, navigation }) {
   useEffect(() => {
     if (socket) {
       const handler = () => {
-        if (!saving) {
+        if (!saving && navigation.isFocused()) {
           console.log("Real-time update received on Edit Patient");
           fetchPatient();
         }
@@ -48,7 +55,7 @@ export default function EditPatientScreen({ route, navigation }) {
         socket.off("patient_changed", handler);
       };
     }
-  }, [socket, patientId, saving]);
+  }, [socket, patientId, saving, navigation]);
 
   const handleUpdatePatient = async () => {
     if (!name) {

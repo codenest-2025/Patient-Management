@@ -51,7 +51,12 @@ export default function EditVisitScreen({ route, navigation }) {
         }
       } catch (e) {
         console.error(e);
-        Alert.alert("Error", "Failed to fetch data");
+        const errMsg = e.response?.status === 404 ? "This patient or visit record has been deleted." : "Failed to load visit details.";
+        Alert.alert(
+          "Error",
+          errMsg,
+          [{ text: "OK", onPress: () => navigation.goBack() }]
+        );
       } finally {
         setLoading(false);
       }

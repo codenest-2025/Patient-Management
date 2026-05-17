@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useContext } from "react";
+import React, { useState, useEffect, useCallback, useContext, useRef } from "react";
 import { View, StyleSheet, ScrollView, RefreshControl, FlatList, ActivityIndicator, Alert } from "react-native";
 import { Text, Card, List, Button, Avatar, Divider, Portal, Modal, TextInput, HelperText, Surface, IconButton } from "react-native-paper";
 import { LinearGradient } from "expo-linear-gradient";
@@ -15,6 +15,9 @@ export default function PatientDetailScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
+  // Ref to track if we are actively deleting this patient to prevent socket races
+  const isDeleting = useRef(false);
+
   // Payment Modal State
   const [visible, setVisible] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -33,6 +36,13 @@ export default function PatientDetailScreen({ route, navigation }) {
       setVisits(vRes.data.visits || []);
     } catch (e) {
       console.error(e);
+      if (e.response?.status === 404 && !isDeleting.current) {
+        Alert.alert(
+          "Patient Deleted",
+          "This patient record has been deleted by an administrator.",
+          [{ text: "OK", onPress: () => navigation.goBack() }]
+        );
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -46,8 +56,11 @@ export default function PatientDetailScreen({ route, navigation }) {
   useEffect(() => {
     if (socket) {
       const handler = () => {
-        console.log("Real-time update received on Patient Detail");
-        fetchPatientData();
+        if (isDeleting.current) return;
+        if (navigation.isFocused()) {
+          console.log("Real-time update received on Patient Detail");
+          fetchPatientData();
+        }
       };
 
       socket.on("patient_changed", handler);
@@ -58,7 +71,7 @@ export default function PatientDetailScreen({ route, navigation }) {
         socket.off("visit_added", handler);
       };
     }
-  }, [socket, patientId]);
+  }, [socket, patientId, navigation]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -129,10 +142,12 @@ export default function PatientDetailScreen({ route, navigation }) {
           style: "destructive",
           onPress: async () => {
             try {
+              isDeleting.current = true;
               await api.delete(`/patients/${patientId}`);
               Alert.alert("Success", "Patient deleted successfully");
               navigation.goBack();
             } catch (e) {
+              isDeleting.current = false;
               console.error(e);
               Alert.alert("Error", e.response?.data?.message || "Failed to delete patient");
             }

@@ -36,6 +36,12 @@ export default function CreateVisitScreen({ route, navigation }) {
         setAllMedicines(mRes.data.medicines || []);
       } catch (e) {
         console.error(e);
+        const errMsg = e.response?.status === 404 ? "This patient record has been deleted." : "Failed to load visit details.";
+        Alert.alert(
+          "Error",
+          errMsg,
+          [{ text: "OK", onPress: () => navigation.goBack() }]
+        );
       }
     };
     fetchData();
